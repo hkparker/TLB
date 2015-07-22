@@ -1,15 +1,16 @@
 package tlj
 
-type TLJServer struct {
-	Sockets		map[string]tls.Conn // socket interface
+type Server struct {
+	Sockets		map[string][]*net.Conn // socket interface
 	Server		*net.UnixListener
-	Events		map[type][]func(type) //huh...
-	Tag			func(socket)void
+	Events		map[reflect.Type][]func(interface{})
+	Tag			func(*net.Conn)
+	//Requests	map[string]map[reflect.Type][]func(interface{})  //  string tag -> map from types to funcs
 }
 
 
 
-func (tljserver *TLJServer) Process(socket) {
+func (server *Server) process(socket) {
 }
 
 

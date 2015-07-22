@@ -9,12 +9,9 @@ import (
 
 type Client struct {
 	Socket		*net.Conn
-	// goroutine which reads from the real socket and runs any functions declared by any requests
 	Types		map[uint16]reflect.Type
 	TypeCodes	map[reflect.Type]uint16
-	//Requests	map[reflect.Type][]func(interface{})  // this is the server side of things
-	//Requests	map[int][]func(interface{})
-	Requests	map[uint16]map[reflect.Type][]func(interface{})	// oh shit
+	Requests	map[uint16]map[reflect.Type][]func(interface{})
 	// mutex for writing to Socket
 }
 
@@ -36,6 +33,7 @@ func NewClient(socket *net.Conn, types map[reflect.Type]uint16) Client {
     go process(client)
 	// response events
 	// start to read from socket and process responses
+	return client
 }
 
 func process(client Client) {
@@ -43,6 +41,7 @@ func process(client Client) {
 		type_header := make([]byte, 2)
 		// read two bytes and validate type
 		//n, err := client.Socket.Read(type_header)
+		// next if n == 1?
 		
 		
 		size_header := make([]byte, 4)
@@ -53,7 +52,7 @@ func process(client Client) {
 	//read and parse header, read binary of struct
 	
 	// if it is a response to a previous request
-	//if msg.type == resp	// they are all going to be of type resp right?
+	//if msg.type == resp	// they are all going to be of type resp right?  at the outer layer yes.  outer layer is just requestID (and actual inner struct type)
 	//	actually parse it
 	//	if client.Requests[RequestID] != nil
 	//		for each thing in the slice of funcs
@@ -78,9 +77,9 @@ func (tljclient *Client) Request(instance Interface{}) Request {
 }
 
 func (request *Request) onResponse(struct_type reflect.Type, function func(interface{})) {	//reflect.TypeOf(Hayden{}), func(resp interface{})) {
-	//request.RequestID
+	//request.RequestID0
 	new_struct := <- chan_from_process
-	for function := range request.Client.requests[request.RequestID][struct_type] {
+	for function := range request.Client.requests[request.RequestID][struct_type] {	// check if its all not nil first, and just add, dont execute (happens in process)
 		function.(new_struct)
 	}
 	
