@@ -16,8 +16,9 @@ type Client struct {
 }
 
 type Request struct {
-	Client		Client
-	RequestID	int
+	RequestID	uint16
+	Type		uint16
+	Data		[]byte
 }
 
 func NewClient(socket *net.Conn, types map[reflect.Type]uint16) Client {

@@ -13,6 +13,8 @@ type Server struct {
 func (server *Server) process(socket) {
 }
 
+func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{})) {
+}
 
-
-// Accept(struct) vs AcceptRequest(struct, response chan?)
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(uint16, interface{})) {
+}

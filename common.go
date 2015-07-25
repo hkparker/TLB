@@ -9,7 +9,7 @@ import (
 type Response struct {
 	RequestID	uint16
 	Type		uint16
-	Data		string
+	Data		[]byte
 }
 
 type Speaker interface {
@@ -24,7 +24,7 @@ func (speaker Speaker) format(instance interface{}) ([]byte, error) {
 	// Get type
 	type_bytes := make([]byte, 2)
 	struct_type := speaker.TypeCodes[reflect.TypeOf(instance)]		// if nil?
-	binary.LittleEndian.PutUint16(type_bytes, struct_type)
+	binary.LittleEndian.PutUint16(type_bytes, struct_type)		// dont actually need this because map stores type uint16?
 	
 	// Get length
 	length := len(bytes)
@@ -39,8 +39,16 @@ func (speaker Speaker) format(instance interface{}) ([]byte, error) {
 
 
 func (server Server) formatResponse(instance interface{}, request_id uint16) ([]byte, error) {
-	// marshal the instance
-	// lookup its type in server's map
-	// create a response struct from those + request_id
-	// format
+	bytes, err := json.Marshal(instance)
+	if err != nil { return bytes, err }
+
+	struct_type := server.TypeCodes[reflect.TypeOf(instance)]		// if nil?
+	
+	resp := Response {
+		RequestID:	request_id,
+		Type:		struct_type,
+		Data:		bytes
+	}
+
+	return format(resp)
 }
