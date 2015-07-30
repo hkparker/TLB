@@ -9,31 +9,26 @@ import (
 
 type Client struct {
 	Socket		*net.Conn
-	Types		map[uint16]reflect.Type
+	Types		map[uint16]func()
 	TypeCodes	map[reflect.Type]uint16
 	Requests	map[uint16]map[reflect.Type][]func(interface{})
-	// mutex for writing to Socket
+	Writing		*Mutex
 }
 
 type Request struct {
 	RequestID	uint16
 	Type		uint16
-	Data		[]byte
+	Data		string
 }
 
-func NewClient(socket *net.Conn, types map[reflect.Type]uint16) Client {
+func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect.Type]uint16) Client {
 	client := Client{
 			Socket:		socket,
-			TypeCodes:	types,
-			Types:		make(map[uint16]reflect.Type),
+			Types:		types,
+			TypeCodes:	type_codes,
 			Requests:	make(map[reflect.Type][]func(interface{}))
 	}
-    for k, v := range types{
-        client.Types[v] = k
-    }
     go process(client)
-	// response events
-	// start to read from socket and process responses
 	return client
 }
 
@@ -61,17 +56,16 @@ func process(client Client) {
 	
 }
 
-
 func (client *Client) Message(instance Interface{}) error {
 	message, err := client.format(instance)
-	if err != nil {return err}
-	//client.Out <- message	// maybe attempt a mutex lock and a write here to catch a failed write?
-	//client.Mutex.Sync{ client.Write(message) }
+	if err != nil { return err }
+	client.Writing.Lock()
+	client.Socket.Write(message)
+	client.Writing.Unlock()
 	return nil
 }
 
-
-func (tljclient *Client) Request(instance Interface{}) Request {
+func (client *Client) Request(instance Interface{}) Request {
 	// generate a random ID for this request, store it in instance
 	// write TL-instance to the client's outgoing channel
 	// tell the tljclient to expect a struct response with that random ID
@@ -85,5 +79,3 @@ func (request *Request) onResponse(struct_type reflect.Type, function func(inter
 	}
 	
 }
-
-

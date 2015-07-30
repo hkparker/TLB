@@ -9,7 +9,7 @@ import (
 type Response struct {
 	RequestID	uint16
 	Type		uint16
-	Data		[]byte
+	Data		string
 }
 
 type Speaker interface {
