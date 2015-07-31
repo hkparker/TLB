@@ -12,7 +12,7 @@ type Client struct {
 	Types		map[uint16]func()
 	TypeCodes	map[reflect.Type]uint16
 	Requests	map[uint16]map[reflect.Type][]func(interface{})
-	Writing		*Mutex
+	Writing		*sync.Mutex
 }
 
 type Request struct {
@@ -22,11 +22,11 @@ type Request struct {
 }
 
 func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect.Type]uint16) Client {
-	client := Client{
-			Socket:		socket,
-			Types:		types,
-			TypeCodes:	type_codes,
-			Requests:	make(map[reflect.Type][]func(interface{}))
+	client := Client {
+		Socket:		socket,
+		Types:		types,
+		TypeCodes:	type_codes,
+		Requests:	make(map[reflect.Type][]func(interface{}))
 	}
     go process(client)
 	return client
@@ -51,8 +51,8 @@ func process(client Client) {
 	//if msg.type == resp	// they are all going to be of type resp right?  at the outer layer yes.  outer layer is just requestID (and actual inner struct type)
 	//	actually parse it
 	//	if client.Requests[RequestID] != nil
-	//		for each thing in the slice of funcs
-	//		go .(msg)
+	//		for each func in the slice of funcs
+	//			go func.(msg)
 	
 }
 
@@ -60,22 +60,23 @@ func (client *Client) Message(instance Interface{}) error {
 	message, err := client.format(instance)
 	if err != nil { return err }
 	client.Writing.Lock()
-	client.Socket.Write(message)
+	_ , err := client.Socket.Write(message)
 	client.Writing.Unlock()
-	return nil
+	return err
 }
 
 func (client *Client) Request(instance Interface{}) Request {
+	request := Request {
+		RequestID:	1//generate random one
+	}
 	// generate a random ID for this request, store it in instance
 	// write TL-instance to the client's outgoing channel
 	// tell the tljclient to expect a struct response with that random ID
+	Message(request)
+	return request
 }
 
-func (request *Request) onResponse(struct_type reflect.Type, function func(interface{})) {	//reflect.TypeOf(Hayden{}), func(resp interface{})) {
-	//request.RequestID0
-	new_struct := <- chan_from_process
-	for function := range request.Client.requests[request.RequestID][struct_type] {	// check if its all not nil first, and just add, dont execute (happens in process)
-		function.(new_struct)
-	}
-	
+func (request *Request) onResponse(struct_type reflect.Type, function func(interface{})) {
+	// create location in map if needed
+	request.Client.requests[request.RequestID][struct_type].append(function)
 }
