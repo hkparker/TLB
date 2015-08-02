@@ -32,11 +32,11 @@ func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect
 		Requests:	make(map[reflect.Type][]func(interface{})),
 		NextID:		1
 	}
-    go process(client)
+    go client.process()
 	return client
 }
 
-func process(client Client) {
+func (client *Client) process() {
 	for {
 		type_header := make([]byte, 2)
 		// read two bytes and validate type

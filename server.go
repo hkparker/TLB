@@ -9,10 +9,10 @@ import (
 
 type Server struct {
 	Listener	*net.UnixListener
-	Sockets		map[string][]*net.Conn							// sockets tagged with strings
+	Sockets		map[string][]*net.Conn	// other way around?
 	Tag			func(*net.Conn)
-	Events		map[string]map[reflect.Type][]func(interface{})						//  string tag -> map from types to funcs
-	Requests	map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})	//  string tag -> map from types to funcs
+	Events		map[string]map[reflect.Type][]func(interface{})
+	Requests	map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
 }
 
 func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
@@ -24,14 +24,23 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
 		Requests:	make(map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{}))
 	}
 	
-	go server.process()
+	go server.handleConnections()
+	go server.readConnections()
 	return server
 }
 
-func (server *Server) process() {
-	// accept new connections from Listener
-	
-	// read from all sockets
+func (server *Server) handleConnections() {
+	// conn, err := server.Listener.Accept()	// errors go where?
+	// tag the socket
+	// server.Connections <- conn
+}
+
+func (server *Server) readConnections() {
+	// for each thing in the channel
+		// go process the structs
+}
+
+func (server *Server) readStructs(socket *net.Conn) {
 	// if request
 		// lookup funcs from Requests
 	// if anything else
@@ -39,9 +48,11 @@ func (server *Server) process() {
 }
 
 func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{})) {
-	// add to events map
+	// create location in events map if needed?
+	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
 }
 
 func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(*net.Conn, uint16, interface{})) {
-	// add to requests map
+	// create location in requests map if needed?
+	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
 }
