@@ -9,7 +9,7 @@ import (
 
 type Server struct {
 	Listener	*net.UnixListener
-	Sockets		map[string][]*net.Conn	// other way around?
+	Sockets		map[string][]*net.Conn	// other way around? socket -> slice of tags
 	Tag			func(*net.Conn)
 	Events		map[string]map[reflect.Type][]func(interface{})
 	Requests	map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
@@ -24,23 +24,21 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
 		Requests:	make(map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{}))
 	}
 	
-	go server.handleConnections()
-	go server.readConnections()
+	go server.process()
 	return server
 }
 
-func (server *Server) handleConnections() {
-	// conn, err := server.Listener.Accept()	// errors go where?
-	// tag the socket
-	// server.Connections <- conn
-}
-
-func (server *Server) readConnections() {
-	// for each thing in the channel
-		// go process the structs
+func (server *Server) process() {
+	for {
+		socket, err := server.Listener.Accept()
+		// break if err?
+		server.Tag(socket)
+		go server.readStructs(socket)
+	}
 }
 
 func (server *Server) readStructs(socket *net.Conn) {
+	// read struct from socket
 	// if request
 		// lookup funcs from Requests
 	// if anything else

@@ -31,6 +31,7 @@ func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect
 		TypeCodes:	type_codes,
 		Requests:	make(map[reflect.Type][]func(interface{})),
 		NextID:		1
+		Writing:	&sync.Mutex{}
 	}
     go client.process()
 	return client
