@@ -38,7 +38,7 @@ func (speaker Speaker) format(instance interface{}) ([]byte, error) {
 }
 
 
-func (server Server) formatResponse(instance interface{}, request_id uint16) ([]byte, error) {
+func (server Server) formatResponse(instance interface{}, request_id uint16) ([]byte, error) {		// is this still needed now that I am creating a Response struct?
 	bytes, err := json.Marshal(instance)
 	if err != nil { return bytes, err }
 

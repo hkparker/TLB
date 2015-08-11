@@ -87,7 +87,7 @@ func (client *Client) Request(instance interface{}) (Request, error) {
 		RequestID:	client.getRequestID(),
 		Type:		client.TypeCodes[Reflect.TypeOf(instance)],
 		Data:		json.Marshal(instance),
-		Client:		client
+		Client:		client	// ensure this isn't formatted
 	}
 	err := Message(request)
 	return request, err
