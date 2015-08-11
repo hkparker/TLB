@@ -23,12 +23,6 @@ type Request struct {
 	Data		string
 }
 
-type Respose struct {
-	RequestID	uint16
-	Type		uint16
-	Data		string
-}
-
 func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
 	server := Server{
 		Listener:	listener,
@@ -77,16 +71,17 @@ func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error)
 func (server *Server) readStructs(socket *net.Conn) {
 	for {
 		obj, tags, err := socket.nextStruct()
-		if err != nil { return }	// signal that this socket closed?  A channel of errored sockets maybe?
+		if err != nil { return }	// signal that this socket closed?  A channel of errored sockets maybe?  muxy could read from this and spin up when one goes down
 		if obj == nil {
 			continue
 		} else if request.TypeOf(obj) == tlj.Request {	// or == request.TypeOf(Request{})
 			for tag := range(tags) {
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
-					// deconstruct the obj to remove requestID, data..., continue if the inner stuct fails to parse
-					requestID 
-					go function(socket, requestID, obj)
+					request_id := obj.RequestID
+					struct_type := obj.Type
+					recieved_struct := server.Types[struct_type](obj.Data)
+					if recieved_struct != nil { go function(socket, request_id, recieved_struct) }
 				}
 			}
 		} else {

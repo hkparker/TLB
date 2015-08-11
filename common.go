@@ -52,7 +52,3 @@ func (server Server) formatResponse(instance interface{}, request_id uint16) ([]
 
 	return format(resp)
 }
-
-//func (socket *net.Conn) nextStuct() (interface{}, err) {
-//	
-//}
