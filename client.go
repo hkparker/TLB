@@ -89,6 +89,7 @@ func (client *Client) Request(instance interface{}) (Request, error) {
 		Data:		json.Marshal(instance),
 		Client:		client	// ensure this isn't formatted
 	}
+	// create a capsule from this request
 	err := Message(request)
 	return request, err
 }

@@ -19,12 +19,6 @@ type Server struct {
 	FailedSockets	chan *net.Conn
 }
 
-//type Request struct {	// name conflict
-//	RequestID	uint16
-//	Type		uint16
-//	Data		string
-//}
-
 func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16]func(), type_codes map[reflect.Type]uint16) Server {
 	server := Server {
 		Listener:		listener,
@@ -52,7 +46,7 @@ func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type,
 }
 
 func (server *Server) Respond(socket, request_id, object) error {
-	response_bytes, err := formatResponse(object, request_id)
+	response_bytes, err := formatCapsule(object, request_id)
 	if err != nil { return err }
 	
 	err = socket.Write(response_bytes)
@@ -110,7 +104,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 		}
 		if obj == nil {
 			continue
-		} else if request.TypeOf(obj) == tlj.Request {	// or == request.TypeOf(Request{})
+		} else if request.TypeOf(obj) == tlj.Capsule {	// or == request.TypeOf(Capsule{})
 			for tag := range(tags) {
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
@@ -129,19 +123,4 @@ func (server *Server) readStructs(socket *net.Conn) {
 			}
 		}
 	}
-}
-
-func (server Server) formatResponse(instance interface{}, request_id uint16) ([]byte, error) {		// is this still needed now that I am creating a Response struct and Respond method?  is formatCapsule needed in client?
-	bytes, err := json.Marshal(instance)
-	if err != nil { return bytes, err }
-
-	struct_type := server.TypeCodes[reflect.TypeOf(instance)]		// if nil?
-	
-	resp := Response {		// capsule?
-		RequestID:	request_id,
-		Type:		struct_type,
-		Data:		bytes
-	}
-
-	return format(resp)
 }

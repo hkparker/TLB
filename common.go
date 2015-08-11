@@ -2,6 +2,7 @@ package tlj
 
 import (
 	"reflect"
+	"errors"
 	"encoding/json"
 	"encoding/binary"
 )
@@ -31,4 +32,22 @@ func (speaker interface{}) format(instance interface{}) ([]byte, error) {
 	bytes = append(type_bytes, append(length_bytes, bytes...)...)
 
 	return bytes, err
+}
+
+func (server Server) formatCapsule(instance interface{}, request_id uint16) ([]byte, error) {
+	bytes, err := json.Marshal(instance)
+	if err != nil { return bytes, err }
+
+	struct_type, present := server.TypeCodes[reflect.TypeOf(instance)]
+	if !present {
+		return nil, errors.New("struct type missing from TypeCodes")
+	}
+	
+	resp := Capsule {
+		RequestID:	request_id,
+		Type:		struct_type,
+		Data:		bytes
+	}
+
+	return format(resp)
 }
