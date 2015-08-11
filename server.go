@@ -8,38 +8,70 @@ import (
 )
 
 type Server struct {
-	Listener	*net.UnixListener
-	Tags		map[*net.Conn][]string
-	Types		map[uint16]func()
-	TypeCodes	map[reflect.Type]uint16
-	Tag			func(*net.Conn)
-	Events		map[string]map[reflect.Type][]func(interface{})
-	Requests	map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
+	Listener		*net.UnixListener
+	Tag				func(*net.Conn)
+	Tags			map[*net.Conn][]string
+	Types			map[uint16]func()
+	TypeCodes		map[reflect.Type]uint16
+	Events			map[string]map[reflect.Type][]func(interface{})
+	Requests		map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
+	FailedServer	chan error
+	FailedSockets	chan *net.Conn
 }
 
-type Request struct {
-	RequestID	uint16
-	Type		uint16
-	Data		string
-}
+//type Request struct {	// name conflict
+//	RequestID	uint16
+//	Type		uint16
+//	Data		string
+//}
 
-func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
-	server := Server{
-		Listener:	listener,
-		Sockets:	make(map[*net.Conn][]string),
-		Tag:		tag,
-		Events:		make(map[string]map[reflect.Type][]func(interface{})),
-		Requests:	make(map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{}))
+func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16]func(), type_codes map[reflect.Type]uint16) Server {
+	server := Server {
+		Listener:		listener,
+		Tag:			tag,
+		Tags:			make(map[*net.Conn][]string),
+		Types:			types,
+		TypeCodes:		type_codes,
+		Events:			make(map[string]map[reflect.Type][]func(interface{})),
+		Requests:		make(map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})),
+		FailedServer:	make(chan error, 1),
+		FailedSockets:	make(chan *net.Conn, 200)
 	}
-	
 	go server.process()
 	return server
+}
+
+func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{})) {
+	// create location in events map if needed?
+	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
+}
+
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(*net.Conn, uint16, interface{})) {
+	// create location in requests map if needed?
+	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
+}
+
+func (server *Server) Respond(socket, request_id, object) error {
+	response_bytes, err := formatResponse(object, request_id)
+	if err != nil { return err }
+	
+	err = socket.Write(response_bytes)
+	if err != nil {
+		server.FailedSockets <- socket
+		delete(server.Tags, socket)
+		return err
+	}
+	
+	return nil
 }
 
 func (server *Server) process() {
 	for {
 		socket, err := server.Listener.Accept()
-		// break if err?
+		if err != nil {
+			server.FailedServer <- err
+			return
+		}
 		// add to the Sockets map for tagging? or can you append to the slice created by make?
 		server.Tag(socket)
 		go server.readStructs(socket)
@@ -51,8 +83,8 @@ func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error)
 	_, err := socket.Read(header)
 	if err != nil { return nil, nil, err }
 	
-	type_bytes := header[:2]	// First two bytes are struct type
-	size_bytes := header[2:]	// Next four bytes are struct size
+	type_bytes := header[:2]
+	size_bytes := header[2:]
 	
 	type_int := binary.LittleEndian.Uint16(type_bytes)
 	size_int := binary.LittleEndian.Uint16(size_bytes)
@@ -71,7 +103,11 @@ func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error)
 func (server *Server) readStructs(socket *net.Conn) {
 	for {
 		obj, tags, err := socket.nextStruct()
-		if err != nil { return }	// signal that this socket closed?  A channel of errored sockets maybe?  muxy could read from this and spin up when one goes down
+		if err != nil {
+			server.FailedSockets <- socket
+			delete(server.Tags, socket)
+			return
+		}
 		if obj == nil {
 			continue
 		} else if request.TypeOf(obj) == tlj.Request {	// or == request.TypeOf(Request{})
@@ -95,12 +131,17 @@ func (server *Server) readStructs(socket *net.Conn) {
 	}
 }
 
-func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{})) {
-	// create location in events map if needed?
-	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
-}
+func (server Server) formatResponse(instance interface{}, request_id uint16) ([]byte, error) {		// is this still needed now that I am creating a Response struct and Respond method?  is formatCapsule needed in client?
+	bytes, err := json.Marshal(instance)
+	if err != nil { return bytes, err }
 
-func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(*net.Conn, uint16, interface{})) {
-	// create location in requests map if needed?
-	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
+	struct_type := server.TypeCodes[reflect.TypeOf(instance)]		// if nil?
+	
+	resp := Response {		// capsule?
+		RequestID:	request_id,
+		Type:		struct_type,
+		Data:		bytes
+	}
+
+	return format(resp)
 }
