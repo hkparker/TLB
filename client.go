@@ -16,13 +16,12 @@ type Client struct {
 	Writing		*sync.Mutex
 }
 
-//move to common
-type Request struct {		// maybe call it a query if it is goes to be used both ways?
+type Request struct {
 	RequestID	uint16
 	Type		uint16
 	Data		string
+	Client		Client
 }
-
 
 func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect.Type]uint16) Client {
 	client := Client {
@@ -38,7 +37,7 @@ func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect
 }
 
 func (client *Client) process() {
-	for {
+	for {	// export this func?  maybe a read next struct?
 		type_header := make([]byte, 2)
 		// read two bytes and validate type
 		//n, err := client.Socket.Read(type_header)
@@ -52,7 +51,8 @@ func (client *Client) process() {
 	// read from client's Socket and decide what to do with the struct
 	//read and parse header, read binary of struct
 	
-	// rather than a struct type and a size, how about a requestID and a size come back.  it is implicit that he stcut that comes back is of response type, a struct that contains the requiest ID, contained stuct type, and struct data.  format it.  this is the same as a request.
+
+	// requestID, Type, sizeOfData come back, followed by marshalled struct data	(Actually because nested, size is in outer (format) struct)
 	
 	// if it is a response to a previous request
 	//if msg.type == resp	// they are all going to be of type resp right?  at the outer layer yes.  outer layer is just requestID (and actual inner struct type)
@@ -69,7 +69,11 @@ func (client *Client) getRequestID() {
 	return id
 }
 
-func (client *Client) Message(instance Interface{}) error {
+func (client *Client) nextResponse() (interface{}, error) {
+	
+}
+
+func (client *Client) Message(instance interface{}) error {
 	message, err := client.format(instance)
 	if err != nil { return err }
 	client.Writing.Lock()
@@ -78,17 +82,20 @@ func (client *Client) Message(instance Interface{}) error {
 	return err
 }
 
-func (client *Client) Request(instance Interface{}) Request {
+func (client *Client) Request(instance interface{}) (Request, error) {
 	request := Request {
 		RequestID:	client.getRequestID(),
 		Type:		client.TypeCodes[Reflect.TypeOf(instance)],
-		Data:		json.Marshal(instance)
+		Data:		json.Marshal(instance),
+		Client:		client
 	}
-	Message(request)
-	return request
+	err := Message(request)
+	return request, err
 }
 
-func (request *Request) onResponse(struct_type reflect.Type, function func(interface{})) {
-	// create location in map if needed?
-	request.Client.requests[request.RequestID][struct_type].append(function)
+func (request *Request) OnResponse(struct_type reflect.Type, function func(interface{})) {
+	//if request.Client.Requests[request.RequestID] == nil {
+	//	request.Client.Requests[request.RequestID] = make(map[reflect.Type][]func(interface{}))
+	//}
+	request.Client.Requests[request.RequestID][struct_type].append(function)
 }

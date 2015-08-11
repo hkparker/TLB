@@ -10,9 +10,17 @@ import (
 type Server struct {
 	Listener	*net.UnixListener
 	Sockets		map[string][]*net.Conn	// other way around? socket -> slice of tags
+	Types		map[uint16]func()
+	TypeCodes	map[reflect.Type]uint16
 	Tag			func(*net.Conn)
 	Events		map[string]map[reflect.Type][]func(interface{})
 	Requests	map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
+}
+
+type Respose struct {
+	RequestID	uint16
+	Type		uint16
+	Data		string
 }
 
 func NewServer(listener *net.UnixListener, tag func(*net.Conn)) Server {
@@ -37,8 +45,29 @@ func (server *Server) process() {
 	}
 }
 
+func (socket *net.Conn) nextStruct(server Server) (interface{}, error) {
+	header := make([]byte, 6)
+	_, err := socket.Read(header)
+	if err != nil { return err }
+	
+	type_bytes := header[:1]	// First two bytes are struct type
+	size_bytes := header[2:]	// Next four bytes are struct size
+	
+	//type_int := binary.LittleEndian.ReadUint16(type_bytes)
+	//size_int := binary.LittleEndian.ReadUint16(size_bytes)
+	
+	struct_data := make([]byte, size_int)
+	_, err := socket.Read(struct_data)
+	if err != nil { return err }
+	
+	recieved_struct := server.Types[type_int](struct_data)	// ensure location in map not nil
+	
+	return recieved_struct, nil	
+}
+
 func (server *Server) readStructs(socket *net.Conn) {
-	// read struct from socket
+	obj, err := socket.nextStruct()
+	if err != nil { return }
 	// if request
 		// lookup funcs from Requests
 	// if anything else
