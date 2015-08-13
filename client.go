@@ -28,7 +28,7 @@ func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect
 		Socket:		socket,
 		Types:		types,
 		TypeCodes:	type_codes,
-		Requests:	make(map[reflect.Type][]func(interface{})),
+		Requests:	make(map[uint16]map[reflect.Type][]func(interface{})),
 		NextID:		1
 		Writing:	&sync.Mutex{}
 	}
@@ -37,17 +37,21 @@ func NewClient(socket *net.Conn, types map[uint16]func(), type_codes map[reflect
 }
 
 func (client *Client) process() {
-	for {	// export this func?  maybe a read next struct?
-		type_header := make([]byte, 2)
+	for {
+		// get nextResponse
+		// if not nil, go exec every func in client.Requests[response.RequestID][reflect.TypeOf(response)]
+	}
+//	for {	// export this func?  maybe a read next struct?
+//		type_header := make([]byte, 2)
 		// read two bytes and validate type
 		//n, err := client.Socket.Read(type_header)
 		// next if n == 1?
 		
 		
-		size_header := make([]byte, 4)
+//		size_header := make([]byte, 4)
 		// read the size then read that many bytes
 		
-	}
+//	}
 	// read from client's Socket and decide what to do with the struct
 	//read and parse header, read binary of struct
 	
@@ -70,7 +74,8 @@ func (client *Client) getRequestID() {
 }
 
 func (client *Client) nextResponse() (interface{}, error) {
-	
+	// read capsule
+	// build struct
 }
 
 func (client *Client) Message(instance interface{}) error {

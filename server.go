@@ -40,7 +40,7 @@ func (server *Server) Accept(socket_tag string, struct_type reflect.Type, functi
 	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
 }
 
-func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(*net.Conn, uint16, interface{})) {
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, responder *Responder)) {
 	// create location in requests map if needed?
 	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
 }
@@ -88,13 +88,13 @@ func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error)
 	size_bytes := header[2:]
 	
 	type_int := binary.LittleEndian.Uint16(type_bytes)
-	size_int := binary.LittleEndian.Uint16(size_bytes)
+	size_int := binary.LittleEndian.Uint32(size_bytes)
 
 	struct_data := make([]byte, size_int)
 	_, err := socket.Read(struct_data)
 	if err != nil { return nil, nil, err }
 	
-	recieved_struct := server.Types[type_int](struct_data)
+	recieved_struct := server.TypeStore.BuildType(type_int, struct_data)
 	
 	tags = server.Tags[socket]
 	
@@ -112,7 +112,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 		if obj == nil {
 			continue
 		} else if request.TypeOf(obj) == tlj.Capsule {	// or == request.TypeOf(Capsule{})
-			for tag := range(tags) {
+			for tag := range(tags) {	// lookup tags here?
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
 					responder := Responder {
@@ -120,8 +120,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 						Socket:		socket,
 						RequestID:	obj.RequestID
 					}
-					struct_type := obj.Type
-					recieved_struct := server.Types[struct_type](obj.Data)
+					recieved_struct := server.TypeStore.BuildType(obj.Type, obj.Data)
 					if recieved_struct != nil { go function(recieved_struct, responder) }
 				}
 			}
