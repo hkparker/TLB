@@ -2,42 +2,30 @@ package tlj
 
 import (
 	"fmt"
+	"errors"
 	"reflect"
 	"encoding/json"
 	"encoding/binary"
 )
 
-/*
-
-build:
-* 
-* 	TypeStore
-* 		func NewTypeStore() TypeStore	// auto fill request, capsule, etc
-* 		func (store *TypeStore) AddType(uint16, func([]byte)) error		// auto choose uint16?
-* 		func (store *TypeStore) LookupCode(reflect.Type) uint16
-* 		func (store *TypeStore) BuildType(uint16, []byte)
-*
-*/
 
 type Server struct {
 	Listener		*net.UnixListener
+	Types			*TypeStore
 	Tag				func(*net.Conn)
 	Tags			map[*net.Conn][]string
-	Types			map[uint16]func()					// -> TypeStore
-	TypeCodes		map[reflect.Type]uint16				// -> TypeStore
 	Events			map[string]map[reflect.Type][]func(interface{})
 	Requests		map[string]map[reflect.Type][]func(interface{}, *Responder)
 	FailedServer	chan error
 	FailedSockets	chan *net.Conn
 }
 
-func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16]func(), type_codes map[reflect.Type]uint16) Server {	// accepts TypeStore
+func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *TypeStore) Server {
 	server := Server {
 		Listener:		listener,
+		Types:			type_store,
 		Tag:			tag,
 		Tags:			make(map[*net.Conn][]string),
-		Types:			types,
-		TypeCodes:		type_codes,
 		Events:			make(map[string]map[reflect.Type][]func(interface{})),
 		Requests:		make(map[string]map[reflect.Type][]func(interface{}, *Responder)),
 		FailedServer:	make(chan error, 1),
