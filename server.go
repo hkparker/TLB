@@ -7,19 +7,31 @@ import (
 	"encoding/binary"
 )
 
+/*
+
+build:
+* 
+* 	TypeStore
+* 		func NewTypeStore() TypeStore	// auto fill request, capsule, etc
+* 		func (store *TypeStore) AddType(uint16, func([]byte)) error		// auto choose uint16?
+* 		func (store *TypeStore) LookupCode(reflect.Type) uint16
+* 		func (store *TypeStore) BuildType(uint16, []byte)
+*
+*/
+
 type Server struct {
 	Listener		*net.UnixListener
 	Tag				func(*net.Conn)
 	Tags			map[*net.Conn][]string
-	Types			map[uint16]func()
-	TypeCodes		map[reflect.Type]uint16
+	Types			map[uint16]func()					// -> TypeStore
+	TypeCodes		map[reflect.Type]uint16				// -> TypeStore
 	Events			map[string]map[reflect.Type][]func(interface{})
-	Requests		map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})
+	Requests		map[string]map[reflect.Type][]func(interface{}, *Responder)
 	FailedServer	chan error
 	FailedSockets	chan *net.Conn
 }
 
-func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16]func(), type_codes map[reflect.Type]uint16) Server {
+func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16]func(), type_codes map[reflect.Type]uint16) Server {	// accepts TypeStore
 	server := Server {
 		Listener:		listener,
 		Tag:			tag,
@@ -27,7 +39,7 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn), types map[uint16
 		Types:			types,
 		TypeCodes:		type_codes,
 		Events:			make(map[string]map[reflect.Type][]func(interface{})),
-		Requests:		make(map[string]map[reflect.Type][]func(*net.Conn, uint16, interface{})),
+		Requests:		make(map[string]map[reflect.Type][]func(interface{}, *Responder)),
 		FailedServer:	make(chan error, 1),
 		FailedSockets:	make(chan *net.Conn, 200)
 	}
@@ -45,14 +57,20 @@ func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type,
 	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
 }
 
-func (server *Server) Respond(socket, request_id, object) error {
-	response_bytes, err := formatCapsule(object, request_id)
+type Responder struct {
+	Server		*Server
+	Socket		*net.Conn
+	RequestID	uint16
+}
+
+func (responder *Responder) Respond(object interface{}) error {
+	response_bytes, err := responder.Server.formatCapsule(object, request_id)
 	if err != nil { return err }
 	
-	err = socket.Write(response_bytes)
+	err = responder.Socket.Write(response_bytes)
 	if err != nil {
-		server.FailedSockets <- socket
-		delete(server.Tags, socket)
+		responder.Server.FailedSockets <- responder.Socket
+		delete(responder.Server.Tags, responder.Socket)
 		return err
 	}
 	
@@ -74,8 +92,9 @@ func (server *Server) process() {
 
 func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error) {
 	header := make([]byte, 6)
-	_, err := socket.Read(header)
+	n, err := socket.Read(header)
 	if err != nil { return nil, nil, err }
+	if n != 6 { return nil, nil, errors.New("too few bytes read for header") }
 	
 	type_bytes := header[:2]
 	size_bytes := header[2:]
@@ -108,10 +127,14 @@ func (server *Server) readStructs(socket *net.Conn) {
 			for tag := range(tags) {
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
-					request_id := obj.RequestID
+					responder := Responder {
+						Server:		server,
+						Socket:		socket,
+						RequestID:	obj.RequestID
+					}
 					struct_type := obj.Type
 					recieved_struct := server.Types[struct_type](obj.Data)
-					if recieved_struct != nil { go function(socket, request_id, recieved_struct) }
+					if recieved_struct != nil { go function(recieved_struct, responder) }
 				}
 			}
 		} else {

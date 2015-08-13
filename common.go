@@ -21,7 +21,7 @@ func (speaker interface{}) format(instance interface{}) ([]byte, error) {
 	// Get type
 	type_bytes := make([]byte, 2)
 	struct_type := speaker.TypeCodes[reflect.TypeOf(instance)]		// if nil?
-	binary.LittleEndian.PutUint16(type_bytes, struct_type)			// dont actually need this because map stores type uint16?
+	binary.LittleEndian.PutUint16(type_bytes, struct_type)
 	
 	// Get length
 	length := len(bytes)
@@ -51,3 +51,11 @@ func (server Server) formatCapsule(instance interface{}, request_id uint16) ([]b
 
 	return format(resp)
 }
+
+
+
+// struct for storing TypeBulders and TypeCodes
+
+//NewTypeStore
+
+//AddType(code uint16, bulder func([]byte))
