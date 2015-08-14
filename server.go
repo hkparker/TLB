@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 )
 
-
 type Server struct {
 	Listener		*net.UnixListener
 	Types			*TypeStore
@@ -52,7 +51,7 @@ type Responder struct {
 }
 
 func (responder *Responder) Respond(object interface{}) error {
-	response_bytes, err := responder.Server.formatCapsule(object, request_id)
+	response_bytes, err := responder.Server.formatCapsule(object, responder.Server.TypeStore, request_id)
 	if err != nil { return err }
 	
 	err = responder.Socket.Write(response_bytes)
@@ -78,41 +77,19 @@ func (server *Server) process() {
 	}
 }
 
-func (socket *net.Conn) nextStruct(server Server) (interface{}, []string, error) {
-	header := make([]byte, 6)
-	n, err := socket.Read(header)
-	if err != nil { return nil, nil, err }
-	if n != 6 { return nil, nil, errors.New("too few bytes read for header") }
-	
-	type_bytes := header[:2]
-	size_bytes := header[2:]
-	
-	type_int := binary.LittleEndian.Uint16(type_bytes)
-	size_int := binary.LittleEndian.Uint32(size_bytes)
-
-	struct_data := make([]byte, size_int)
-	_, err := socket.Read(struct_data)
-	if err != nil { return nil, nil, err }
-	
-	recieved_struct := server.TypeStore.BuildType(type_int, struct_data)
-	
-	tags = server.Tags[socket]
-	
-	return recieved_struct, tags, nil	
-}
-
 func (server *Server) readStructs(socket *net.Conn) {
 	for {
-		obj, tags, err := socket.nextStruct()
+		obj, err := nextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
 			delete(server.Tags, socket)
 			return
 		}
+		tags := server.Tags[socket]
 		if obj == nil {
 			continue
 		} else if request.TypeOf(obj) == tlj.Capsule {	// or == request.TypeOf(Capsule{})
-			for tag := range(tags) {	// lookup tags here?
+			for tag := range(tags) { 					// range over nil ok?
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
 					responder := Responder {
