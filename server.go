@@ -69,7 +69,7 @@ func (server *Server) process() {
 		socket, err := server.Listener.Accept()
 		if err != nil {
 			server.FailedServer <- err
-			return
+			break
 		}
 		// add to the Sockets map for tagging? or can you append to the slice created by make?
 		server.Tag(socket)
@@ -88,7 +88,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 		tags := server.Tags[socket]
 		if obj == nil {
 			continue
-		} else if request.TypeOf(obj) == tlj.Capsule {	// or == request.TypeOf(Capsule{})
+		} else if request.TypeOf(obj) == request.TypeOf(Capsule{}) {
 			for tag := range(tags) { 					// range over nil ok?
 				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
 				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
@@ -97,7 +97,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 						Socket:		socket,
 						RequestID:	obj.RequestID
 					}
-					recieved_struct := server.TypeStore.BuildType(obj.Type, obj.Data)
+					recieved_struct := server.TypeStore.BuildType(obj.Type, obj.Data)		//b64 decode that obj.Data?
 					if recieved_struct != nil { go function(recieved_struct, responder) }
 				}
 			}

@@ -26,7 +26,7 @@ func NewTypeStore() TypeStore {
 		NextID:		1
 	}
 	
-	capsule_builder := func(data []byte) Capsule {
+	capsule_builder := func(data []byte) *Capsule {	// always return a pointer?
 		capsule := &Capsule{}
 		err := json.Unmarshal(data, &capsule)
 		if err != nil { return nil }
@@ -51,7 +51,7 @@ func (store *TypeStore) LookupCode(struct_type reflect.Type) uint16 {
 	return code
 }
 
-func (store *TypeStore) BuildType(struct_code uint16, data []byte) interface{} {
+func (store *TypeStore) BuildType(struct_code uint16, data []byte) *interface{} {
 	function, present := store.Types[struct_code]
 	if !present { return nil } // needed?
 	return function(data)
@@ -79,7 +79,7 @@ func formatCapsule(instance interface{}, type_store TypeStore, request_id uint16
 	bytes, err := json.Marshal(instance)
 	if err != nil { return nil, err }
 
-	struct_type := type_store.LookupCode([reflect.TypeOf(instance)])						// can get type from interface{} param?
+	struct_type := type_store.LookupCode([reflect.TypeOf(instance)])
 	if struct_type == nil { return nil, errors.New("struct type missing from TypeCodes") }
 	
 	capsule := Capsule {
@@ -94,8 +94,8 @@ func formatCapsule(instance interface{}, type_store TypeStore, request_id uint16
 func nextStruct(socket *net.Conn, type_store *TypeStore) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
-	if err != nil { return nil, nil, err }
-	if n != 6 { return nil, nil, nil }
+	if err != nil { return nil, err }
+	if n != 6 { return nil, nil }
 	
 	type_bytes := header[:2]
 	size_bytes := header[2:]
@@ -105,7 +105,7 @@ func nextStruct(socket *net.Conn, type_store *TypeStore) (interface{}, error) {
 
 	struct_data := make([]byte, size_int)
 	_, err := socket.Read(struct_data)
-	if err != nil { return nil, nil, err }
+	if err != nil { return nil, err }
 	
 	recieved_struct := type_store.BuildType(type_int, struct_data)
 	
