@@ -45,7 +45,7 @@ func (store *TypeStore) AddType(struct_type reflect.Type, builder func([]byte)) 
 	store.TypeCodes[struct_type] = type_id
 }
 
-func (store *TypeStore) LookupCode(struct_type reflect.Type) uint16 {
+func (store *TypeStore) LookupCode(struct_type reflect.Type) uint16 {	// return a present bool?
 	code, present := store.TypeCodes[struct_type]
 	if !present { return nil } // needed?
 	return code

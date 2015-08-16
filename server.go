@@ -13,8 +13,8 @@ type Server struct {
 	Types			*TypeStore
 	Tag				func(*net.Conn)
 	Tags			map[*net.Conn][]string
-	Events			map[string]map[reflect.Type][]func(interface{})
-	Requests		map[string]map[reflect.Type][]func(interface{}, *Responder)
+	Events			map[string]map[uint16][]func(interface{})
+	Requests		map[string]map[uint16][]func(interface{}, *Responder)
 	FailedServer	chan error
 	FailedSockets	chan *net.Conn
 }
@@ -35,13 +35,17 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *Type
 }
 
 func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{})) {
-	// create location in events map if needed?
-	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
+	// create location in events map if needed?  does tagging function know to create these locations?
+	type_code := Server.TypeStore.LookupCode(struct_type)
+	if type_code == nil { return }
+	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][type_store], function)
 }
 
 func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, responder *Responder)) {
 	// create location in requests map if needed?
-	server.Requests[socket_tag][struct_type] = append(server.Events[socket_tag][struct_type], function)
+	type_code := Server.TypeStore.LookupCode(struct_type)
+	if type_code == nil { return }
+	server.Requests[socket_tag][struct_type] = append(server.Requests[socket_tag][type_code], function)
 }
 
 type Responder struct {
@@ -61,7 +65,7 @@ func (responder *Responder) Respond(object interface{}) error {
 		return err
 	}
 	
-	return nil
+	return err
 }
 
 func (server *Server) process() {
@@ -72,6 +76,7 @@ func (server *Server) process() {
 			break
 		}
 		// add to the Sockets map for tagging? or can you append to the slice created by make?
+		//server.Tags[socket] := make([]string)
 		server.Tag(socket)
 		go server.readStructs(socket)
 	}
@@ -89,9 +94,10 @@ func (server *Server) readStructs(socket *net.Conn) {
 		if obj == nil {
 			continue
 		} else if request.TypeOf(obj) == request.TypeOf(Capsule{}) {
-			for tag := range(tags) { 					// range over nil ok?
-				//server.Requests[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
-				for function := range(server.Requests[tag][reflect.TypeOf(obj)]) {
+			// continue if there are no tags that apply to this socket
+			for tag := range(tags) {
+				//server.Requests[tag][obj.Type]  // make sure this isn't nil?
+				for function := range(server.Requests[tag][obj.Type]) {
 					responder := Responder {
 						Server:		server,
 						Socket:		socket,
@@ -102,9 +108,10 @@ func (server *Server) readStructs(socket *net.Conn) {
 				}
 			}
 		} else {
+			// continue if there are no tags that apply to this socket
 			for tag := range(tags) {
-				//server.Events[tag][reflect.TypeOf(obj)]  // make sure this isn't nil?
-				for function := range(server.Events[tag][reflect.TypeOf(obj)]) {
+				//server.Events[tag][obj.Type]  // make sure this isn't nil?
+				for function := range(server.Events[tag][obj.Type]) {
 					go function(obj)
 				}
 			}

@@ -48,6 +48,7 @@ func (client *Client) process() {
 		if reflect.TypeOf(capsule) != reflect.TypeOf(Capsule{}) { continue }
 		recieved_struct := client.TypeStore.BuildType(capsule.Type, capsule.Data) //b64 decode?
 		if recieved_struct == nil { continue }
+		if client.Requests[capsule.RequestID][capsule.Type] == nil { continue }
 		for function := range(client.Requests[capsule.RequestID][capsule.Type]) {
 			go function(recieved_struct)
 		}
