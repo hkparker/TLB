@@ -74,7 +74,7 @@ func format(instance interface{}, type_store *TypeStore) ([]byte, error) {
 	return bytes, err
 }
 
-func formatCapsule(instance interface{}, type_store TypeStore, request_id uint16) ([]byte, error) {
+func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint16) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil { return bytes, err }
 
