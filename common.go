@@ -1,6 +1,7 @@
 package tlj
 
 import (
+	"net"
 	"reflect"
 	"errors"
 	"encoding/json"
@@ -23,7 +24,7 @@ func NewTypeStore() TypeStore {
 	type_store := TypeStore {
 		Types:		make(map[uint16]func()),
 		TypeCodes:	make(map[reflect.Type]uint16),
-		NextID:		1
+		NextID:		1,
 	}
 	
 	capsule_builder := func(data []byte) *Capsule {
@@ -55,7 +56,7 @@ func (store *TypeStore) BuildType(struct_code uint16, data []byte) *interface{} 
 	return function(data)
 }
 
-func format(instance interface{}, type_store TypeStore) ([]byte, error) {
+func format(instance interface{}, type_store *TypeStore) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil { return nil, err }
 	
@@ -83,13 +84,13 @@ func formatCapsule(instance interface{}, type_store TypeStore, request_id uint16
 	capsule := Capsule {
 		RequestID:	request_id,
 		Type:		struct_type,
-		Data:		string(bytes)															// base64 encode?
+		Data:		string(bytes),															// base64 encode?
 	}
 
 	return format(capsule, type_store)
 }
 
-func nextStruct(socket *net.Conn, type_store *TypeStore) (interface{}, error) {
+func nextStruct(socket *net.IPConn, type_store *TypeStore) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
 	if err != nil { return nil, err }
@@ -102,7 +103,7 @@ func nextStruct(socket *net.Conn, type_store *TypeStore) (interface{}, error) {
 	size_int := binary.LittleEndian.Uint32(size_bytes)
 
 	struct_data := make([]byte, size_int)
-	_, err := socket.Read(struct_data)
+	_, err = socket.Read(struct_data)
 	if err != nil { return nil, err }
 	
 	recieved_struct := type_store.BuildType(type_int, struct_data)

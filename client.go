@@ -1,17 +1,17 @@
 package tlj
 
 import (
-	"fmt"
+	"net"
+	"sync"
 	"reflect"
 	"encoding/json"
-	"encoding/binary"
 )
 
 type Client struct {
-	Socket		*net.Conn
+	Socket		*net.IPConn
 	TypeStore	*TypeStore
 	Requests	map[uint16]map[uint16][]func(interface{})
-	NextID		int
+	NextID		uint16
 	Writing		*sync.Mutex
 	Inserting	*sync.Mutex
 	Dead		chan error
@@ -21,10 +21,10 @@ type Request struct {
 	RequestID	uint16
 	Type		uint16
 	Data		string
-	Client		Client
+	Client		*Client
 }
 
-func NewClient(socket *net.Conn, type_store *TypeStore) Client {
+func NewClient(socket *net.IPConn, type_store *TypeStore) Client {
 	client := Client {
 		Socket:		socket,
 		TypeStore:	type_store,
@@ -32,7 +32,7 @@ func NewClient(socket *net.Conn, type_store *TypeStore) Client {
 		NextID:		1,
 		Writing:	&sync.Mutex{},
 		Inserting:	&sync.Mutex{},
-		Dead:		make(chan error, 1)
+		Dead:		make(chan error, 1),
 	}
 	go client.process()
 	return client
@@ -46,16 +46,20 @@ func (client *Client) process() {
 			break
 		}
 		if reflect.TypeOf(capsule) != reflect.TypeOf(Capsule{}) { continue }
-		recieved_struct := client.TypeStore.BuildType(capsule.Type, capsule.Data)	//base64 decode?
+		capsule_value := reflect.Indirect(reflect.ValueOf(capsule))
+		capsule_request_id := uint16(capsule_value.FieldByName("RequestID").Uint())
+		capsule_type_code := uint16(capsule_value.FieldByName("Type").Uint())
+		capsule_data := capsule_value.FieldByName("Data").String()						//base64 decode?
+		recieved_struct := client.TypeStore.BuildType(capsule_type_code, capsule_data)	//reflect.Indirect(r).FieldByName(field)
 		if recieved_struct == nil { continue }
-		if client.Requests[capsule.RequestID][capsule.Type] == nil { continue }
-		for function := range(client.Requests[capsule.RequestID][capsule.Type]) {
+		if client.Requests[capsule_request_id][capsule_type_code] == nil { continue }
+		for function := range(client.Requests[capsule_request_id][capsule_type_code]) {
 			go function(recieved_struct)
 		}
 	}
 }
 
-func (client *Client) getRequestID() {
+func (client *Client) getRequestID() uint16 {
 	// cycle over old requests when id reaches max?
 	id := client.NextID
 	client.NextID = id + 1
@@ -63,28 +67,32 @@ func (client *Client) getRequestID() {
 }
 
 func (client *Client) Message(instance interface{}) error {
-	message, err := client.format(instance)
+	message, err := format(instance, client.TypeStore)
 	if err != nil { return err }
 	client.Writing.Lock()
-	_ , err := client.Socket.Write(message)
+	_ , err = client.Socket.Write(message)
 	client.Writing.Unlock()
 	return err
 }
 
-func (client *Client) Request(instance interface{}) (Request, error) {
+func (client *Client) Request(instance interface{}) (*Request, error) {
+	instance_data, err := json.Marshal(instance)
+	if err != nil { return nil, err }
+	instance_type, present := client.TypeStore.LookupCode(reflect.TypeOf(instance))
+	if !present { return nil, errors.New("cannot request type not in type stores") }
 	request := Request {
 		RequestID:	client.getRequestID(),
-		Type:		client.TypeCodes[Reflect.TypeOf(instance)],
-		Data:		json.Marshal(instance),											// base64 encode?
-		Client:		client
+		Type:		instance_type,
+		Data:		string(instance_data),											// base64 encode?
+		Client:		client,
 	}
 	capsule := Capsule {
 		RequestID:	request.RequestID,
 		Type:		request.Type,
-		Data:		request.Data
+		Data:		request.Data,
 	}
 	client.Requests[request.RequestID] = make(map[uint16][]func(interface{}))
-	err := Message(capsule)
+	err = client.Message(capsule)
 	return request, err
 }
 

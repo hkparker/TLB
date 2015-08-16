@@ -1,11 +1,8 @@
 package tlj
 
 import (
-	"fmt"
-	"errors"
+	"net"
 	"reflect"
-	"encoding/json"
-	"encoding/binary"
 )
 
 type Server struct {
@@ -28,7 +25,7 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *Type
 		Events:			make(map[string]map[reflect.Type][]func(interface{})),
 		Requests:		make(map[string]map[reflect.Type][]func(interface{}, *Responder)),
 		FailedServer:	make(chan error, 1),
-		FailedSockets:	make(chan *net.Conn, 200)
+		FailedSockets:	make(chan *net.Conn, 200),
 	}
 	go server.process()
 	return server
@@ -38,14 +35,14 @@ func (server *Server) Accept(socket_tag string, struct_type reflect.Type, functi
 	// create location in events map if needed?  does tagging function know to create these locations?
 	type_code, present := Server.TypeStore.LookupCode(struct_type)
 	if !present { return }
-	server.Events[socket_tag][struct_type] = append(server.Events[socket_tag][type_store], function)
+	server.Events[socket_tag][type_code] = append(server.Events[socket_tag][type_code], function)
 }
 
-func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, responder *Responder)) {
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, *Responder)) {
 	// create location in requests map if needed?
 	type_code, present := Server.TypeStore.LookupCode(struct_type)
 	if !present { return }
-	server.Requests[socket_tag][struct_type] = append(server.Requests[socket_tag][type_code], function)
+	server.Requests[socket_tag][type_code] = append(server.Requests[socket_tag][type_code], function)
 }
 
 type Responder struct {
@@ -55,7 +52,7 @@ type Responder struct {
 }
 
 func (responder *Responder) Respond(object interface{}) error {
-	response_bytes, err := responder.Server.formatCapsule(object, responder.Server.TypeStore, request_id)
+	response_bytes, err := formatCapsule(object, responder.Server.TypeStore, request_id)
 	if err != nil { return err }
 	
 	_, err = responder.Socket.Write(response_bytes)
@@ -75,7 +72,7 @@ func (server *Server) process() {
 			server.FailedServer <- err
 			break
 		}
-		server.Tags[socket] := make([]string, 0)
+		server.Tags[socket] = make([]string, 0)
 		server.Tag(socket)
 		go server.readStructs(socket)
 	}
@@ -99,7 +96,7 @@ func (server *Server) readStructs(socket *net.Conn) {
 					responder := Responder {
 						Server:		server,
 						Socket:		socket,
-						RequestID:	obj.RequestID
+						RequestID:	obj.RequestID,
 					}
 					recieved_struct := server.TypeStore.BuildType(obj.Type, obj.Data)		// base64 decode?
 					if recieved_struct != nil { go function(recieved_struct, responder) }
