@@ -51,7 +51,7 @@ func (client *Client) process() {
 		capsule_request_id := uint16(capsule_value.FieldByName("RequestID").Uint())
 		capsule_type_code := uint16(capsule_value.FieldByName("Type").Uint())
 		capsule_data := capsule_value.FieldByName("Data").String()								//base64 decode?
-		recieved_struct := client.TypeStore.BuildType(capsule_type_code, []byte(capsule_data))	//reflect.Indirect(r).FieldByName(field)
+		recieved_struct := client.TypeStore.BuildType(capsule_type_code, []byte(capsule_data))
 		if recieved_struct == nil { continue }
 		if client.Requests[capsule_request_id][capsule_type_code] == nil { continue }
 		for function := range(client.Requests[capsule_request_id][capsule_type_code]) {
@@ -84,7 +84,7 @@ func (client *Client) Request(instance interface{}) (*Request, error) {
 	request := &Request {
 		RequestID:	client.getRequestID(),
 		Type:		instance_type,
-		Data:		string(instance_data),											// base64 encode?
+		Data:		string(instance_data),														// base64 encode?
 		Client:		client,
 	}
 	capsule := Capsule {

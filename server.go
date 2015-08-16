@@ -9,7 +9,7 @@ type Server struct {
 	Listener		*net.UnixListener
 	TypeStore		*TypeStore
 	Tag				func(*net.Conn)
-	Tags			map[*net.Conn][]string
+	Tags			map[net.Conn][]string
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, *Responder)
 	FailedServer	chan error
@@ -21,7 +21,7 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *Type
 		Listener:		listener,
 		TypeStore:		type_store,
 		Tag:			tag,
-		Tags:			make(map[*net.Conn][]string),
+		Tags:			make(map[net.Conn][]string),
 		Events:			make(map[string]map[uint16][]func(interface{})),
 		Requests:		make(map[string]map[uint16][]func(interface{}, *Responder)),
 		FailedServer:	make(chan error, 1),
@@ -47,7 +47,7 @@ func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type,
 
 type Responder struct {
 	Server		*Server
-	Socket		net.Conn		// replace with my own interface which only has Read, Write, PeerIP, etc?
+	Socket		net.Conn
 	RequestID	uint16
 }
 
@@ -58,7 +58,7 @@ func (responder *Responder) Respond(object interface{}) error {
 	_, err = responder.Socket.Write(response_bytes)
 	if err != nil {
 		responder.Server.FailedSockets <- responder.Socket
-		delete(responder.Server.Tags, &responder.Socket)
+		delete(responder.Server.Tags, responder.Socket)
 		return err
 	}
 	
@@ -72,7 +72,7 @@ func (server *Server) process() {
 			server.FailedServer <- err
 			break
 		}
-		server.Tags[&socket] = make([]string, 0)
+		server.Tags[socket] = make([]string, 0)
 		server.Tag(&socket)
 		go server.readStructs(socket)
 	}
@@ -83,10 +83,10 @@ func (server *Server) readStructs(socket net.Conn) {
 		obj, err := nextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
-			delete(server.Tags, &socket)
+			delete(server.Tags, socket)
 			return
 		}
-		tags := server.Tags[&socket]
+		tags := server.Tags[socket]
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {
