@@ -9,7 +9,7 @@ import (
 )
 
 type Client struct {
-	Socket		*net.IPConn
+	Socket		net.Conn
 	TypeStore	*TypeStore
 	Requests	map[uint16]map[uint16][]func(interface{})
 	NextID		uint16
@@ -25,7 +25,7 @@ type Request struct {
 	Client		*Client
 }
 
-func NewClient(socket *net.IPConn, type_store *TypeStore) Client {
+func NewClient(socket net.Conn, type_store *TypeStore) Client {
 	client := Client {
 		Socket:		socket,
 		TypeStore:	type_store,
@@ -50,7 +50,7 @@ func (client *Client) process() {
 		capsule_value := reflect.Indirect(reflect.ValueOf(capsule))
 		capsule_request_id := uint16(capsule_value.FieldByName("RequestID").Uint())
 		capsule_type_code := uint16(capsule_value.FieldByName("Type").Uint())
-		capsule_data := capsule_value.FieldByName("Data").String()						//base64 decode?
+		capsule_data := capsule_value.FieldByName("Data").String()								//base64 decode?
 		recieved_struct := client.TypeStore.BuildType(capsule_type_code, []byte(capsule_data))	//reflect.Indirect(r).FieldByName(field)
 		if recieved_struct == nil { continue }
 		if client.Requests[capsule_request_id][capsule_type_code] == nil { continue }
@@ -101,6 +101,7 @@ func (request *Request) OnResponse(struct_type reflect.Type, function func(inter
 	type_id, present := request.Client.TypeStore.LookupCode(struct_type)
 	if !present { return }
 	request.Client.Inserting.Lock()
-	request.Client.Requests[request.RequestID][type_id].append(function)
+	// create the type_id if it is nil
+	request.Client.Requests[request.RequestID][type_id] = append(request.Client.Requests[request.RequestID][type_id], function)
 	request.Client.Inserting.Unlock()
 }

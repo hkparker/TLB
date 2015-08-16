@@ -8,24 +8,24 @@ import (
 type Server struct {
 	Listener		*net.UnixListener
 	TypeStore		*TypeStore
-	Tag				func(*net.IPConn)
-	Tags			map[*net.IPConn][]string
+	Tag				func(*net.Conn)
+	Tags			map[*net.Conn][]string
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, *Responder)
 	FailedServer	chan error
-	FailedSockets	chan *net.IPConn
+	FailedSockets	chan net.Conn
 }
 
-func NewServer(listener *net.UnixListener, tag func(*net.IPConn), type_store *TypeStore) Server {
+func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *TypeStore) Server {
 	server := Server {
 		Listener:		listener,
 		TypeStore:		type_store,
 		Tag:			tag,
-		Tags:			make(map[*net.IPConn][]string),
+		Tags:			make(map[*net.Conn][]string),
 		Events:			make(map[string]map[uint16][]func(interface{})),
 		Requests:		make(map[string]map[uint16][]func(interface{}, *Responder)),
 		FailedServer:	make(chan error, 1),
-		FailedSockets:	make(chan *net.IPConn, 200),
+		FailedSockets:	make(chan net.Conn, 200),
 	}
 	go server.process()
 	return server
@@ -47,7 +47,7 @@ func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type,
 
 type Responder struct {
 	Server		*Server
-	Socket		*net.IPConn		// replace with my own interface which only has Read, Write, PeerIP, etc?
+	Socket		net.Conn		// replace with my own interface which only has Read, Write, PeerIP, etc?
 	RequestID	uint16
 }
 
@@ -58,7 +58,7 @@ func (responder *Responder) Respond(object interface{}) error {
 	_, err = responder.Socket.Write(response_bytes)
 	if err != nil {
 		responder.Server.FailedSockets <- responder.Socket
-		delete(responder.Server.Tags, responder.Socket)
+		delete(responder.Server.Tags, &responder.Socket)
 		return err
 	}
 	
@@ -67,8 +67,7 @@ func (responder *Responder) Respond(object interface{}) error {
 
 func (server *Server) process() {
 	for {
-		conn, err := server.Listener.Accept()
-		socket := net.IPConn(conn)
+		socket, err := server.Listener.Accept()
 		if err != nil {
 			server.FailedServer <- err
 			break
@@ -79,15 +78,15 @@ func (server *Server) process() {
 	}
 }
 
-func (server *Server) readStructs(socket *net.IPConn) {
+func (server *Server) readStructs(socket net.Conn) {
 	for {
 		obj, err := nextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
-			delete(server.Tags, socket)
+			delete(server.Tags, &socket)
 			return
 		}
-		tags := server.Tags[socket]
+		tags := server.Tags[&socket]
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {

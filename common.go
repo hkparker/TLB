@@ -14,20 +14,22 @@ type Capsule struct {
 	Data		string
 }
 
+type Builder func([]byte) interface{}
+
 type TypeStore struct {
-	Types			map[uint16]func()
+	Types			map[uint16]Builder
 	TypeCodes		map[reflect.Type]uint16
 	NextID			uint16
 }
 
 func NewTypeStore() TypeStore {
 	type_store := TypeStore {
-		Types:		make(map[uint16]func()),
+		Types:		make(map[uint16]Builder),
 		TypeCodes:	make(map[reflect.Type]uint16),
 		NextID:		1,
 	}
 	
-	capsule_builder := func(data []byte) *Capsule {
+	capsule_builder := func(data []byte) interface{} {
 		capsule := &Capsule{}
 		err := json.Unmarshal(data, &capsule)
 		if err != nil { return nil }
@@ -39,18 +41,19 @@ func NewTypeStore() TypeStore {
 	return type_store
 }
 
-func (store *TypeStore) AddType(struct_type reflect.Type, builder func([]byte)) error {
-	type_id = store.NextID
+func (store *TypeStore) AddType(struct_type reflect.Type, builder Builder) {
+	type_id := store.NextID
 	store.NextID = store.NextID + 1
 	store.Types[type_id] = builder
 	store.TypeCodes[struct_type] = type_id
 }
 
 func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {
-	return store.TypeCodes[struct_type]
+	val, present := store.TypeCodes[struct_type]
+	return val, present
 }
 
-func (store *TypeStore) BuildType(struct_code uint16, data []byte) *interface{} {
+func (store *TypeStore) BuildType(struct_code uint16, data []byte) interface{} {
 	function, present := store.Types[struct_code]
 	if !present { return nil }
 	return function(data)
@@ -90,7 +93,7 @@ func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint1
 	return format(capsule, type_store)
 }
 
-func nextStruct(socket *net.IPConn, type_store *TypeStore) (interface{}, error) {
+func nextStruct(socket net.Conn, type_store *TypeStore) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
 	if err != nil { return nil, err }
