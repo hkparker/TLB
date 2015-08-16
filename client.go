@@ -46,7 +46,7 @@ func (client *Client) process() {
 			break
 		}
 		if reflect.TypeOf(capsule) != reflect.TypeOf(Capsule{}) { continue }
-		recieved_struct := client.TypeStore.BuildType(capsule.Type, capsule.Data) //b64 decode?
+		recieved_struct := client.TypeStore.BuildType(capsule.Type, capsule.Data)	//base64 decode?
 		if recieved_struct == nil { continue }
 		if client.Requests[capsule.RequestID][capsule.Type] == nil { continue }
 		for function := range(client.Requests[capsule.RequestID][capsule.Type]) {
@@ -75,7 +75,7 @@ func (client *Client) Request(instance interface{}) (Request, error) {
 	request := Request {
 		RequestID:	client.getRequestID(),
 		Type:		client.TypeCodes[Reflect.TypeOf(instance)],
-		Data:		json.Marshal(instance),	// base64 encode?
+		Data:		json.Marshal(instance),											// base64 encode?
 		Client:		client
 	}
 	capsule := Capsule {
@@ -89,8 +89,8 @@ func (client *Client) Request(instance interface{}) (Request, error) {
 }
 
 func (request *Request) OnResponse(struct_type reflect.Type, function func(interface{})) {
-	type_id := request.Client.TypeStore.LookupCode(struct_type)
-	if type_id == nil { return }
+	type_id, present := request.Client.TypeStore.LookupCode(struct_type)
+	if !present { return }
 	request.Client.Inserting.Lock()
 	request.Client.Requests[request.RequestID][type_id].append(function)
 	request.Client.Inserting.Unlock()

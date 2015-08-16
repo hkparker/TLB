@@ -26,7 +26,7 @@ func NewTypeStore() TypeStore {
 		NextID:		1
 	}
 	
-	capsule_builder := func(data []byte) *Capsule {	// always return a pointer?
+	capsule_builder := func(data []byte) *Capsule {
 		capsule := &Capsule{}
 		err := json.Unmarshal(data, &capsule)
 		if err != nil { return nil }
@@ -45,15 +45,13 @@ func (store *TypeStore) AddType(struct_type reflect.Type, builder func([]byte)) 
 	store.TypeCodes[struct_type] = type_id
 }
 
-func (store *TypeStore) LookupCode(struct_type reflect.Type) uint16 {	// return a present bool?
-	code, present := store.TypeCodes[struct_type]
-	if !present { return nil } // needed?
-	return code
+func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {
+	return store.TypeCodes[struct_type]
 }
 
 func (store *TypeStore) BuildType(struct_code uint16, data []byte) *interface{} {
 	function, present := store.Types[struct_code]
-	if !present { return nil } // needed?
+	if !present { return nil }
 	return function(data)
 }
 
@@ -63,7 +61,7 @@ func format(instance interface{}, type_store TypeStore) ([]byte, error) {
 	
 	type_bytes := make([]byte, 2)
 	struct_type, present := type_store.LookupCode(reflect.TypeOf(instance))
-	if struct_type == nil { return nil, errors.New("struct type missing from TypeCodes") }
+	if !present { return type_bytes, errors.New("struct type missing from TypeCodes") }
 	binary.LittleEndian.PutUint16(type_bytes, struct_type)
 	
 	length := len(bytes)
@@ -77,15 +75,15 @@ func format(instance interface{}, type_store TypeStore) ([]byte, error) {
 
 func formatCapsule(instance interface{}, type_store TypeStore, request_id uint16) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
-	if err != nil { return nil, err }
+	if err != nil { return bytes, err }
 
-	struct_type := type_store.LookupCode([reflect.TypeOf(instance)])
-	if struct_type == nil { return nil, errors.New("struct type missing from TypeCodes") }
+	struct_type, present := type_store.LookupCode(reflect.TypeOf(instance))
+	if !present { return bytes, errors.New("struct type missing from TypeCodes") }
 	
 	capsule := Capsule {
 		RequestID:	request_id,
 		Type:		struct_type,
-		Data:		string(bytes)															// should be a string.  base64 for unmarshalling?
+		Data:		string(bytes)															// base64 encode?
 	}
 
 	return format(capsule, type_store)
