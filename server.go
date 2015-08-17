@@ -102,7 +102,7 @@ func (server *Server) readStructs(socket net.Conn) {
 						Socket:		socket,
 						RequestID:	embedded_request_id,
 					}
-					recieved_struct := server.TypeStore.BuildType(embedded_type_code, []byte(embedded_data))		// base64 decode?
+					recieved_struct := server.TypeStore.BuildType(embedded_type_code, []byte(embedded_data))
 					if recieved_struct != nil { go function(recieved_struct, responder) }
 				}
 			}

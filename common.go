@@ -65,7 +65,7 @@ func format(instance interface{}, type_store *TypeStore) ([]byte, error) {
 	
 	type_bytes := make([]byte, 2)
 	struct_type, present := type_store.LookupCode(reflect.TypeOf(instance))
-	if !present { return type_bytes, errors.New("struct type missing from TypeCodes") }
+	if !present { return type_bytes, errors.New("struct type missing from TypeStore") }
 	binary.LittleEndian.PutUint16(type_bytes, struct_type)
 	
 	length := len(bytes)
@@ -82,12 +82,12 @@ func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint1
 	if err != nil { return bytes, err }
 
 	struct_type, present := type_store.LookupCode(reflect.TypeOf(instance))
-	if !present { return bytes, errors.New("struct type missing from TypeCodes") }
+	if !present { return bytes, errors.New("struct type missing from TypeStore") }
 	
 	capsule := Capsule {
 		RequestID:	request_id,
 		Type:		struct_type,
-		Data:		string(bytes),															// base64 encode?
+		Data:		string(bytes),
 	}
 
 	return format(capsule, type_store)
