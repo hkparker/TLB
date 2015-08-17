@@ -11,7 +11,7 @@ type Server struct {
 	Tag				func(*net.Conn)
 	Tags			map[net.Conn][]string
 	Events			map[string]map[uint16][]func(interface{})
-	Requests		map[string]map[uint16][]func(interface{}, *Responder)
+	Requests		map[string]map[uint16][]func(interface{}, Responder)
 	FailedServer	chan error
 	FailedSockets	chan net.Conn
 }
@@ -23,7 +23,7 @@ func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *Type
 		Tag:			tag,
 		Tags:			make(map[net.Conn][]string),
 		Events:			make(map[string]map[uint16][]func(interface{})),
-		Requests:		make(map[string]map[uint16][]func(interface{}, *Responder)),
+		Requests:		make(map[string]map[uint16][]func(interface{}, Responder)),
 		FailedServer:	make(chan error, 1),
 		FailedSockets:	make(chan net.Conn, 200),
 	}
@@ -38,7 +38,7 @@ func (server *Server) Accept(socket_tag string, struct_type reflect.Type, functi
 	server.Events[socket_tag][type_code] = append(server.Events[socket_tag][type_code], function)
 }
 
-func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, *Responder)) {
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, Responder)) {
 	// create location in requests map if needed?
 	type_code, present := server.TypeStore.LookupCode(struct_type)
 	if !present { return }
@@ -90,13 +90,13 @@ func (server *Server) readStructs(socket net.Conn) {
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {
-			for tag := range(tags) {
+			for _, tag := range(tags) {
 				obj_value := reflect.Indirect(reflect.ValueOf(obj))
 				embedded_request_id := uint16(obj_value.FieldByName("RequestID").Uint())
 				embedded_type_code := uint16(obj_value.FieldByName("Type").Uint())
 				embedded_data := obj_value.FieldByName("Data").String()
 				if server.Requests[tag][embedded_type_code] == nil { continue }		// depends on how it was created
-				for function := range(server.Requests[tag][embedded_type_code]) {
+				for _, function := range(server.Requests[tag][embedded_type_code]) {
 					responder := Responder {
 						Server:		server,
 						Socket:		socket,
@@ -107,11 +107,11 @@ func (server *Server) readStructs(socket net.Conn) {
 				}
 			}
 		} else {
-			for tag := range(tags) {
+			for _, tag := range(tags) {
 				recieved_type, present := server.TypeStore.LookupCode(reflect.TypeOf(obj))
 				if !present { continue }
 				if server.Events[tag][recieved_type] == nil { continue }			// depends on how it was created
-				for function := range(server.Events[tag][recieved_type]) {
+				for _, function := range(server.Events[tag][recieved_type]) {
 					go function(obj)
 				}
 			}

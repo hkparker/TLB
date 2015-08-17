@@ -54,7 +54,7 @@ func (client *Client) process() {
 		recieved_struct := client.TypeStore.BuildType(capsule_type_code, []byte(capsule_data))
 		if recieved_struct == nil { continue }
 		if client.Requests[capsule_request_id][capsule_type_code] == nil { continue }
-		for function := range(client.Requests[capsule_request_id][capsule_type_code]) {
+		for _, function := range(client.Requests[capsule_request_id][capsule_type_code]) {
 			go function(recieved_struct)
 		}
 	}
