@@ -8,7 +8,7 @@ import (
 type Server struct {
 	Listener		*net.UnixListener
 	TypeStore		*TypeStore
-	Tag				func(*net.Conn)
+	Tag				func(*net.Conn, *Server)
 	Tags			map[net.Conn][]string
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, Responder)
@@ -16,7 +16,7 @@ type Server struct {
 	FailedSockets	chan net.Conn
 }
 
-func NewServer(listener *net.UnixListener, tag func(*net.Conn), type_store *TypeStore) Server {
+func NewServer(listener *net.UnixListener, tag func(*net.Conn, *Server), type_store *TypeStore) Server {
 	server := Server {
 		Listener:		listener,
 		TypeStore:		type_store,
@@ -73,7 +73,7 @@ func (server *Server) process() {
 			break
 		}
 		server.Tags[socket] = make([]string, 0)
-		server.Tag(&socket)
+		server.Tag(&socket, server)
 		go server.readStructs(socket)
 	}
 }

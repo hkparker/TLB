@@ -27,12 +27,31 @@ func TestTypeStoreIsCorrectType(t *testing.T) {
 		t.Errorf("return value of NewTypeStore() != tlj.TypeStore")
 	} 
 }
-/*
+
 func TestTypeStoreHasCapsuleBuilder(t *testing.T) {
 	type_store := NewTypeStore()
-	// build a capsule
+	cap := Capsule {
+		RequestID:	1,
+		Type:		1,
+		Data:		"test",
+	}
+	cap_bytes, _ := json.Marshal(cap)
+	iface := type_store.BuildType(0, cap_bytes)
+	if restored, ok := iface.(*Capsule); ok {
+		if restored.RequestID != cap.RequestID {
+			t.Errorf("capsule builder did not restore RequestID")
+		}
+		if restored.Type != cap.Type {
+			t.Errorf("capsule builder did not restore Type")
+		}
+		if restored.Data != cap.Data {
+			t.Errorf("capsule builder did not restore Data")
+		}
+	} else {
+		t.Errorf("could not assert *Cpasule type on restored interface")
+	}
 }
-*/
+
 func TestTypeStoreCanAddType(t *testing.T) {
 	type_store := NewTypeStore()
 	thingy_type := reflect.TypeOf(Thingy{})
@@ -42,21 +61,22 @@ func TestTypeStoreCanAddType(t *testing.T) {
 	}
 }
 
-//func TestTypeStoreWontAddBadFunc(t *testing.T) {
-	//type_store := NewTypeStore()
-	
-//}
+func TestTypeStoreCanLookupCode(t *testing.T) {
+	type_store := NewTypeStore()
+	code, present := type_store.LookupCode(reflect.TypeOf(Capsule{}))
+	if code != 0 || !present {
+		t.Errorf("unable to lookup type_code for Capsule")
+	}
+}
 
-//func TestTypeStoreCanLookupCode(t *testing.T) {
-	//type_store := NewTypeStore()
-	
-//}
+func TestTypeStoreWontLookupBadCode(t *testing.T) {
+	type_store := NewTypeStore()
+	_, present := type_store.LookupCode(reflect.TypeOf(Thingy{}))
+	if present {
+		t.Errorf("nonexistent type returns a code")
+	}
+}
 
-//func TestTypeStoreWontLookupBadCode(t *testing.T) {
-	//type_store := NewTypeStore()
-	
-//}
-/*
 func TestTypeStoreCanBuildType(t *testing.T) {
 	type_store := NewTypeStore()
 	thingy_type := reflect.TypeOf(Thingy{})
@@ -72,21 +92,31 @@ func TestTypeStoreCanBuildType(t *testing.T) {
 	if err != nil {
 		t.Errorf("marshalling thingy returned an error")
 	}
-	restored := type_store.BuildType(1, marshalled)
-	if restored.Name != thingy.Name {
-		t.Errorf("string not presevered when building from marshalled struct")
-	}
-	if restored.ID != thingy.ID {
-		t.Errorf("int not presevered when building from marshalled struct")
+	iface := type_store.BuildType(1, marshalled)
+	if restored, ok := iface.(*Thingy); ok {
+		if restored.Name != thingy.Name {
+			t.Errorf("string not presevered when building from marshalled struct")
+		}
+		if restored.ID != thingy.ID {
+			t.Errorf("int not presevered when building from marshalled struct")
+		}
+	} else {
+		t.Errorf("could not assert *Thingy type on restored interface")
 	}
 }
-*/
-//func TestTypeStoreWontBuildBadType(t *testing.T) {
-	//type_store := NewTypeStore()
-	
-//}
 
-//func TestTypeStoreWontBuildUnformattedData(t *testing.T) {
-	//type_store := NewTypeStore()
-	
-//}
+func TestTypeStoreWontBuildBadType(t *testing.T) {
+	type_store := NewTypeStore()
+	iface := type_store.BuildType(1, make([]byte, 0))
+	if iface != nil {
+		t.Errorf("type_Store built something with a nonexistent id")
+	}
+}
+
+func TestTypeStoreWontBuildUnformattedData(t *testing.T) {
+	type_store := NewTypeStore()
+	iface := type_store.BuildType(0, []byte("notjson"))
+	if iface != nil {
+		t.Errorf("type_Store built something when bad data was supplied")
+	}
+}
