@@ -148,7 +148,6 @@ func TestFormat(t *testing.T) {
 	if err != nil {
 		t.Errorf("error unmarahalling format data: %s", err)
 	}
-	
 }
 
 func TestCantFormatUnknownType(t *testing.T) {
@@ -161,5 +160,30 @@ func TestCantFormatUnknownType(t *testing.T) {
 	if err == nil {
 		t.Errorf("format didn't return error when unknown type was passed in")
 	}
-	
 }
+
+/*
+func TestFormatCapsule(t *testing.T) {
+ 
+}
+
+func TestCantFormatCapsuleWithUnknownType(t *testing.T) {
+ 
+}
+
+func TestNextStruct(t *testing.T) {
+
+}
+
+func TestNextStructErrorWithBrokenSocket(t *testing.T) {
+
+}
+
+func TestNextStructNilWhenMissing(t *testing.T) {
+
+}
+
+func TestNextStructNilWhenHeaderTooSmall(t *testing.T) {
+
+}
+*/
