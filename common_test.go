@@ -5,7 +5,7 @@ import (
 	"reflect"
 //	"errors"
 	"encoding/json"
-//	"encoding/binary"
+	"encoding/binary"
 	"testing"
 )
 
@@ -48,7 +48,7 @@ func TestTypeStoreHasCapsuleBuilder(t *testing.T) {
 			t.Errorf("capsule builder did not restore Data")
 		}
 	} else {
-		t.Errorf("could not assert *Cpasule type on restored interface")
+		t.Errorf("could not assert *Capsule type on restored interface")
 	}
 }
 
@@ -109,7 +109,7 @@ func TestTypeStoreWontBuildBadType(t *testing.T) {
 	type_store := NewTypeStore()
 	iface := type_store.BuildType(1, make([]byte, 0))
 	if iface != nil {
-		t.Errorf("type_Store built something with a nonexistent id")
+		t.Errorf("type_store built something with a nonexistent id")
 	}
 }
 
@@ -117,6 +117,49 @@ func TestTypeStoreWontBuildUnformattedData(t *testing.T) {
 	type_store := NewTypeStore()
 	iface := type_store.BuildType(0, []byte("notjson"))
 	if iface != nil {
-		t.Errorf("type_Store built something when bad data was supplied")
+		t.Errorf("type_store built something when bad data was supplied")
 	}
+}
+
+func TestFormat(t *testing.T) {
+	type_store := NewTypeStore()
+	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	bytes, err := format(thing, &type_store)
+	if err != nil {
+		t.Errorf("error formatting valid struct: %s", err)
+	}
+	type_bytes := bytes[:2]
+	size_bytes := bytes[2:6]
+	json_data := bytes[6:]
+	type_int := binary.LittleEndian.Uint16(type_bytes)
+	size_int := binary.LittleEndian.Uint32(size_bytes)
+	if type_int != 1 {
+		t.Errorf("format didn't use the correct type ID")
+	}
+	if int(size_int) != len(json_data) {
+		t.Errorf("format didn't set the correct length")
+	}
+	restored_thing := &Thingy{}
+	err = json.Unmarshal(json_data, &restored_thing)
+	if err != nil {
+		t.Errorf("error unmarahalling format data: %s", err)
+	}
+	
+}
+
+func TestCantFormatUnknownType(t *testing.T) {
+	type_store := NewTypeStore()
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	_, err := format(thing, &type_store)
+	if err == nil {
+		t.Errorf("format didn't return error when unknown type was passed in")
+	}
+	
 }
