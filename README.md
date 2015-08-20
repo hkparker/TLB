@@ -11,11 +11,11 @@ I wanted to be able to write networked application in Go by expressing the appli
 Concepts
 --------
 
-TLJ contains a Server which acts on the unix.Listener interface, and clients that acts on the net.Conn interface.  Both server and client reference the same instance of a TypeStore, which holds all the structs that may be passed over the network.  The server also has a tagging function, which tags accepted sockets.
+TLJ contains a server which acts on the unix.Listener interface, and clients that act on the net.Conn interface.  Both server and client reference the same instance of a TypeStore, which holds all the structs that may be passed over the network.  The server also has a tagging function, which tags accepted sockets.
 
-The server can accept structs from sockets with a specific tag with the server.Accept function.  If the server needs to response, server.AcceptRequest can be used, which provides functionallity to respond down the socket the struct was recieved from.
+The server can accept structs from sockets with a specific tag with the server.Accept function.  If the server needs to respond, server.AcceptRequest can be used, which provides functionallity to respond down the socket the struct was recieved on.
 
-Clients can use client.Message to send a struct to a server without recieving a response.  If a response is desired, clients can use client.SendRequest, which returns a struct that can accept various structs as responses.
+Clients can use client.Message to send a struct to a server without recieving a response.  If a response, or responses, are desired, clients can use client.Request, which provides functionallity to accept structs in response.
 
 Usage
 -----
