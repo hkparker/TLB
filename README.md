@@ -1,53 +1,65 @@
 TLJ
 ===
 
-A simple Type-Length-Value protocol implemented with JSON to hand structs between Go applications over a variety of networks.
+A simple Type Length Value protocol implemented with JSON to hand structs between Go applications over a variety of networks.
 
 Motivation
 ----------
 
-I wanted to be able to write networked application in Go by expressing the applications behavior in terms of what to do with structs recieved on various sockets.  This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonnymity networks such as I2P.  Aside from the esamples in Usage, functionallity also exists in this library to retrieve dead sockets and servers through channels.
+I wanted to be able to write networked application in Go by expressing the applications behavior in terms of what to do with structs recieved on various sockets.  This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonymity networks such as I2P.  Aside from the samples in Usage, functionallity also exists in this library to retrieve dead sockets and servers through channels.
+
+Concepts
+--------
+
+TLJ contains a Server which acts on the unix.Listener interface, and clients that acts on the net.Conn interface.  Both server and client reference the same instance of a TypeStore, which holds all the structs that may be passed over the network.  The server also has a tagging function, which tags accepted sockets.
+
+The server can accept structs from sockets with a specific tag with the server.Accept function.  If the server needs to response, server.AcceptRequest can be used, which provides functionallity to respond down the socket the struct was recieved from.
+
+Clients can use client.Message to send a struct to a server without recieving a response.  If a response is desired, clients can use client.SendRequest, which returns a struct that can accept various structs as responses.
 
 Usage
 -----
 
-To use tlj, start by defining some struct you want to pass around.
+To use tlj, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.
 
 ```
 type InformationalEvent struct {
 	Parameter1	string
 	Parameter2	int
 }
+informational_event := reflect.TypeOf(InformationalEvent{})
 
 Type InformationRequest {
 	Parameter1	string
 }
+information_request := reflect.TypeOf(InformationRequest{})
 
 type InformationResponse {
 	Parameter1	string
 	Parameter2	string
 	Parameter3	string
 }
+information_response := reflect.TypeOf(InformationResponse{})
 ```
 
 Then, define funcs for each struct that will create the struct from a JSON byte array.  Add these functions to a TypeStore.
 
 ```
-func NewInformationalEvent{data []byte) interface{} {
+func NewInformationalEvent(data []byte) interface{} {
 	event := &InformationalEvent{}
 	err := json.Unmarshal(data, &event)
 	if err != nil { return nil }
 	return event
 }
 
-func NewInformationRequest{data []byte) interface{} {
+func NewInformationRequest(data []byte) interface{} {
 	request := &InformationRequest{}
 	err := json.Unmarshal(data, &request)
 	if err != nil { return nil }
 	return request
 }
 
-func NewInformationResponse{data []byte) interface{} {
+func NewInformationResponse(data []byte) interface{} {
 	response := &InformationResponse{}
 	err := json.Unmarshal(data, &response)
 	if err != nil { return nil }
@@ -55,9 +67,9 @@ func NewInformationResponse{data []byte) interface{} {
 }
 
 type_store := NewTypeStore()
-type_store.AddType(reflect.TypeOf(InformationalEvent{}), NewInformationalEvent)
-type_store.AddType(reflect.TypeOf(InformationRequest{}), NewInformationRequest)
-type_store.AddType(reflect.TypeOf(InformationResponse{}), NewInformationResponse)
+type_store.AddType(informational_event, NewInformationalEvent)
+type_store.AddType(information_request, NewInformationRequest)
+type_store.AddType(information_response, NewInformationResponse)
 ```
 
 A tagging function is used by the server to tag sockets based on their properties.
@@ -83,7 +95,7 @@ client := NewClient(socket, type_store)
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
 
 ```
-server.Accept("all", reflect.TypeOf(InformationalEvent{}), func(iface) {
+server.Accept("all", informational_event, func(iface) {
 	if informational_event, ok :=  iface.(*InformationalEvent); ok {			// type assertion as builders return an interface{}
 		fmt.Println("a socket tagged \"all\" sent an InformationalEvent struct")
 		fmt.Println(informational_event.Parameter1)
@@ -91,7 +103,7 @@ server.Accept("all", reflect.TypeOf(InformationalEvent{}), func(iface) {
 	}
 })
 
-server.AcceptRequest("all", reflect.TypeOf(InformationRequest{}), func(iface, responder) {
+server.AcceptRequest("all", information_request, func(iface, responder) {
 	if information_request, ok :=  iface.(*InformationRequest); ok {
 		fmt.Println("a socket tagged \"all\" sent an InformationRequest request")
 		resp := InformationResponse {
@@ -126,9 +138,9 @@ req, err := client.Request(request)
 if err != nil {
 	fmt.Println("request did not send")
 }
-req.OnResponse(reflect.TypeOf(InformationResponse{}), func(iface) {
+req.OnResponse(information_response, func(iface) {
 	if information_response, ok :=  iface.(*InformationResponse); ok {
-		fmt.Println("the request got a response")
+		fmt.Println("the request got a response of type InformationResponse")
 		fmt.Println(information_response.Parameter1)
 		fmt.Println(information_response.Parameter2)
 		fmt.Println(information_response.Parameter3)
