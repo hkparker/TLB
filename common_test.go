@@ -1,9 +1,8 @@
 package tlj
 
 import (
-//	"net"
+	"net"
 	"reflect"
-//	"errors"
 	"encoding/json"
 	"encoding/binary"
 	"testing"
@@ -220,11 +219,47 @@ func TestCantFormatCapsuleWithUnknownType(t *testing.T) {
 	}
 }
 
-/*
 func TestNextStruct(t *testing.T) {
-
+	type_store := NewTypeStore()
+	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	sockets := make(chan net.Conn, 1)
+	server, err := net.Listen("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not start test server on localhost:5000")
+	}
+	defer server.Close()
+	go func() {
+		conn, _ := server.Accept()
+		sockets <- conn
+	}()
+	client, err := net.Dial("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not connect test client to localhost:5000")
+	}
+	server_side := <- sockets
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	bytes, err := format(thing, &type_store)
+	if err != nil {
+		
+	}
+	server_side.Write(bytes)
+	iface, err := nextStruct(client, &type_store)
+	if restored_thing, ok :=  iface.(*Thingy); ok {
+		if restored_thing.Name != thing.Name {
+			t.Errorf("thingy from nextStruct doesn't have same Name")
+		}
+		if restored_thing.ID != thing.ID {
+			t.Errorf("thingy from nextStruct doesn't have same ID")
+		}
+	} else {
+		t.Errorf("nextStruct did not return an interface which could be asserted as Thingy")
+	}
 }
 
+/*
 func TestNextStructErrorWithBrokenSocket(t *testing.T) {
 
 }

@@ -62,6 +62,7 @@ func (client *Client) process() {
 
 func (client *Client) getRequestID() uint16 {
 	// cycle over old requests when id reaches max?
+	// generate randomly until full?
 	id := client.NextID
 	client.NextID = id + 1
 	return id
@@ -101,7 +102,6 @@ func (request *Request) OnResponse(struct_type reflect.Type, function func(inter
 	type_id, present := request.Client.TypeStore.LookupCode(struct_type)
 	if !present { return }
 	request.Client.Inserting.Lock()
-	// create the type_id if it is nil
 	request.Client.Requests[request.RequestID][type_id] = append(request.Client.Requests[request.RequestID][type_id], function)
 	request.Client.Inserting.Unlock()
 }
