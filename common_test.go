@@ -162,15 +162,65 @@ func TestCantFormatUnknownType(t *testing.T) {
 	}
 }
 
-/*
 func TestFormatCapsule(t *testing.T) {
- 
+	type_store := NewTypeStore()
+	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	bytes, err := formatCapsule(thing, &type_store, 1)
+	if err != nil {
+		t.Errorf("error formatting capsule with a thingy: %s", err)
+	}
+	type_bytes := bytes[:2]	
+	size_bytes := bytes[2:6]
+	capsule_data := bytes[6:]
+	type_int := binary.LittleEndian.Uint16(type_bytes)
+	size_int := binary.LittleEndian.Uint32(size_bytes)
+	if type_int != 0 {
+		t.Errorf("formatCapsule didn't use the correct type ID")
+	}
+	if int(size_int) != len(capsule_data) {
+		t.Errorf("formatCapsule didn't set the correct length")
+	}
+	restored_capsule := &Capsule{}
+	err = json.Unmarshal(capsule_data, &restored_capsule)
+	if err != nil {
+		t.Errorf("could not unmarshal formatted capsule")
+	}
+	if restored_capsule.RequestID != 1 {
+		t.Errorf("formatCapsule didn't set the correct RequestID")
+	}
+	if restored_capsule.Type != 1 {
+		t.Errorf("formatCapsule didn't set the correct Type")
+	}
+	restored_thing := &Thingy{}
+	err = json.Unmarshal([]byte(restored_capsule.Data), &restored_thing)
+	if err != nil {
+		t.Errorf("could not unmarshal capsule data")
+	}
+	if restored_thing.Name != "test" {
+		t.Errorf("capsuled thingy didn't come back with same name")
+	}
+	if restored_thing.ID != 1 {
+		t.Errorf("capsuled thingy didn't come back with same ID")
+	}
 }
 
 func TestCantFormatCapsuleWithUnknownType(t *testing.T) {
- 
+	type_store := NewTypeStore()
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	_, err := formatCapsule(thing, &type_store, 1)
+	if err == nil {
+		t.Errorf("formatCapsule didn't error when it recieved a bad type")
+	}
 }
 
+/*
 func TestNextStruct(t *testing.T) {
 
 }
