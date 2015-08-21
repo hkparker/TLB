@@ -236,6 +236,7 @@ func TestNextStruct(t *testing.T) {
 	if err != nil {
 		t.Errorf("could not connect test client to localhost:5000")
 	}
+	defer client.Close()
 	server_side := <- sockets
 	thing := Thingy {
 		Name:	"test",
@@ -243,7 +244,7 @@ func TestNextStruct(t *testing.T) {
 	}
 	bytes, err := format(thing, &type_store)
 	if err != nil {
-		
+		t.Errorf("error formatting thing")
 	}
 	server_side.Write(bytes)
 	iface, err := nextStruct(client, &type_store)
@@ -259,11 +260,31 @@ func TestNextStruct(t *testing.T) {
 	}
 }
 
-/*
 func TestNextStructErrorWithBrokenSocket(t *testing.T) {
-
+	type_store := NewTypeStore()
+	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	sockets := make(chan net.Conn, 1)
+	server, err := net.Listen("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not start test server on localhost:5000")
+	}
+	defer server.Close()
+	go func() {
+		conn, _ := server.Accept()
+		sockets <- conn
+	}()
+	client, err := net.Dial("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not connect test client to localhost:5000")
+	}
+	client.Close()
+	_, err = nextStruct(client, &type_store)
+	if err == nil {
+		t.Errorf("nextStruct did not return an error when the socket was closed")
+	}
 }
 
+/*
 func TestNextStructNilWhenMissing(t *testing.T) {
 
 }
