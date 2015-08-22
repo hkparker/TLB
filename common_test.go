@@ -248,6 +248,9 @@ func TestNextStruct(t *testing.T) {
 	}
 	server_side.Write(bytes)
 	iface, err := nextStruct(client, &type_store)
+	if err != nil {
+		t.Errorf("nextStruct returned an error: %s", err)
+	}
 	if restored_thing, ok :=  iface.(*Thingy); ok {
 		if restored_thing.Name != thing.Name {
 			t.Errorf("thingy from nextStruct doesn't have same Name")
@@ -284,12 +287,37 @@ func TestNextStructErrorWithBrokenSocket(t *testing.T) {
 	}
 }
 
-/*
 func TestNextStructNilWhenMissing(t *testing.T) {
-
+	type_store := NewTypeStore()
+	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	sockets := make(chan net.Conn, 1)
+	server, err := net.Listen("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not start test server on localhost:5000")
+	}
+	defer server.Close()
+	go func() {
+		conn, _ := server.Accept()
+		sockets <- conn
+	}()
+	client, err := net.Dial("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not connect test client to localhost:5000")
+	}
+	defer client.Close()
+	server_side := <- sockets
+	thing := Thingy {
+		Name:	"test",
+		ID:		1,
+	}
+	bytes, err := format(thing, &type_store)
+	if err != nil {
+		t.Errorf("error formatting thing")
+	}
+	server_side.Write(bytes)
+	empty_store := NewTypeStore()
+	iface, err := nextStruct(client, &empty_store)
+	if iface != nil {
+		t.Errorf("nextStruct returned something that wasn't in the passed type store")
+	}
 }
-
-func TestNextStructNilWhenHeaderTooSmall(t *testing.T) {
-
-}
-*/
