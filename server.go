@@ -10,6 +10,7 @@ type Server struct {
 	TypeStore		*TypeStore
 	Tag				func(*net.Conn, *Server)
 	Tags			map[net.Conn][]string
+	//Sockets		map[string][]net.Conn
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, Responder)
 	FailedServer	chan error

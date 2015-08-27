@@ -238,24 +238,64 @@ func TestNextStruct(t *testing.T) {
 	}
 	defer client.Close()
 	server_side := <- sockets
-	thing := Thingy {
+	thing1 := Thingy {
 		Name:	"test",
 		ID:		1,
 	}
-	bytes, err := format(thing, &type_store)
+	thing2 := Thingy {
+		Name:	"hellow, world",
+		ID:		2,
+	}
+	thing3 := Thingy {
+		Name:	"😃",
+		ID:		3,
+	}
+	bytes1, err := format(thing1, &type_store)
+	bytes2, err := format(thing2, &type_store)
+	bytes3, err := format(thing3, &type_store)
 	if err != nil {
 		t.Errorf("error formatting thing")
 	}
-	server_side.Write(bytes)
+	server_side.Write(bytes1)
+	server_side.Write(bytes2)
+	server_side.Write(bytes3)
 	iface, err := nextStruct(client, &type_store)
 	if err != nil {
 		t.Errorf("nextStruct returned an error: %s", err)
 	}
 	if restored_thing, ok :=  iface.(*Thingy); ok {
-		if restored_thing.Name != thing.Name {
+		if restored_thing.Name != thing1.Name {
 			t.Errorf("thingy from nextStruct doesn't have same Name")
 		}
-		if restored_thing.ID != thing.ID {
+		if restored_thing.ID != thing1.ID {
+			t.Errorf("thingy from nextStruct doesn't have same ID")
+		}
+	} else {
+		t.Errorf("nextStruct did not return an interface which could be asserted as Thingy")
+	}
+	iface, err = nextStruct(client, &type_store)
+	if err != nil {
+		t.Errorf("nextStruct returned an error: %s", err)
+	}
+	if restored_thing, ok :=  iface.(*Thingy); ok {
+		if restored_thing.Name != thing2.Name {
+			t.Errorf("thingy from nextStruct doesn't have same Name")
+		}
+		if restored_thing.ID != thing2.ID {
+			t.Errorf("thingy from nextStruct doesn't have same ID")
+		}
+	} else {
+		t.Errorf("nextStruct did not return an interface which could be asserted as Thingy")
+	}
+	iface, err = nextStruct(client, &type_store)
+	if err != nil {
+		t.Errorf("nextStruct returned an error: %s", err)
+	}
+	if restored_thing, ok :=  iface.(*Thingy); ok {
+		if restored_thing.Name != thing3.Name {
+			t.Errorf("thingy from nextStruct doesn't have same Name")
+		}
+		if restored_thing.ID != thing3.ID {
 			t.Errorf("thingy from nextStruct doesn't have same ID")
 		}
 	} else {
