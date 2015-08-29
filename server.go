@@ -74,9 +74,6 @@ func (server *Server) process() {
 			server.FailedServer <- err
 			break
 		}
-		server.Tags[&socket] = make([]string, 0)
-		//tags := server.Tag(&socket, server)
-		// for each tag, map it to socket
 		server.Tag(&socket, server)
 		go server.readStructs(socket)
 	}
