@@ -6,23 +6,24 @@ import (
 )
 
 type Server struct {
-	Listener		*net.UnixListener
+	Listener		net.Listener
 	TypeStore		*TypeStore
 	Tag				func(*net.Conn, *Server)
-	Tags			map[net.Conn][]string
-	//Sockets		map[string][]net.Conn
+	Tags			map[*net.Conn][]string
+	Sockets			map[string][]*net.Conn
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, Responder)
 	FailedServer	chan error
 	FailedSockets	chan net.Conn
 }
 
-func NewServer(listener *net.UnixListener, tag func(*net.Conn, *Server), type_store *TypeStore) Server {
+func NewServer(listener net.Listener, tag func(*net.Conn, *Server), type_store *TypeStore) Server {
 	server := Server {
 		Listener:		listener,
 		TypeStore:		type_store,
 		Tag:			tag,
-		Tags:			make(map[net.Conn][]string),
+		Tags:			make(map[*net.Conn][]string),
+		Sockets:		make(map[string][]*net.Conn),
 		Events:			make(map[string]map[uint16][]func(interface{})),
 		Requests:		make(map[string]map[uint16][]func(interface{}, Responder)),
 		FailedServer:	make(chan error, 1),
@@ -59,7 +60,7 @@ func (responder *Responder) Respond(object interface{}) error {
 	_, err = responder.Socket.Write(response_bytes)
 	if err != nil {
 		responder.Server.FailedSockets <- responder.Socket
-		delete(responder.Server.Tags, responder.Socket)
+		delete(responder.Server.Tags, &responder.Socket)
 		return err
 	}
 	
@@ -73,7 +74,9 @@ func (server *Server) process() {
 			server.FailedServer <- err
 			break
 		}
-		server.Tags[socket] = make([]string, 0)
+		server.Tags[&socket] = make([]string, 0)
+		//tags := server.Tag(&socket, server)
+		// for each tag, map it to socket
 		server.Tag(&socket, server)
 		go server.readStructs(socket)
 	}
@@ -84,10 +87,10 @@ func (server *Server) readStructs(socket net.Conn) {
 		obj, err := nextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
-			delete(server.Tags, socket)
+			delete(server.Tags, &socket)
 			return
 		}
-		tags := server.Tags[socket]
+		tags := server.Tags[&socket]
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {
