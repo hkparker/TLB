@@ -95,7 +95,7 @@ client := NewClient(socket, type_store)
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
 
 ```
-server.Accept("all", informational_event, func(iface) {
+server.Accept("all", informational_event, func(iface interface{}) {
 	if informational_event, ok :=  iface.(*InformationalEvent); ok {			// type assertion as builders return an interface{}
 		fmt.Println("a socket tagged \"all\" sent an InformationalEvent struct")
 		fmt.Println(informational_event.Parameter1)
@@ -103,7 +103,7 @@ server.Accept("all", informational_event, func(iface) {
 	}
 })
 
-server.AcceptRequest("all", information_request, func(iface, responder) {
+server.AcceptRequest("all", information_request, func(iface interface{}, responder Responder) {
 	if information_request, ok :=  iface.(*InformationRequest); ok {
 		fmt.Println("a socket tagged \"all\" sent an InformationRequest request")
 		resp := InformationResponse {
@@ -149,6 +149,8 @@ req.OnResponse(information_response, func(iface) {
 ```
 
 There can be many calls to server.Accept, server.AcceptRequest, and client.OnResponse with the same conditions but different functions and each will define a goroutine that will be concurrently executed when the condition is met.
+
+For peer-to-peer applications, both sides of a connection may be included in a TLJ server, and only server.Accept and client.Message can be used.  For more traditional client-server applications client.Request and server.AcceptRequest might make more sense.
 
 License
 -------

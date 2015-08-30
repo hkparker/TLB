@@ -41,21 +41,18 @@ func NewClient(socket net.Conn, type_store *TypeStore) Client {
 
 func (client *Client) process() {
 	for {
-		capsule, err := nextStruct(client.Socket, client.TypeStore)
+		iface, err := nextStruct(client.Socket, client.TypeStore)
 		if err != nil {
 			client.Dead <- err
 			break
 		}
-		if reflect.TypeOf(capsule) != reflect.TypeOf(Capsule{}) { continue }
-		capsule_value := reflect.Indirect(reflect.ValueOf(capsule))
-		capsule_request_id := uint16(capsule_value.FieldByName("RequestID").Uint())
-		capsule_type_code := uint16(capsule_value.FieldByName("Type").Uint())
-		capsule_data := capsule_value.FieldByName("Data").String()
-		recieved_struct := client.TypeStore.BuildType(capsule_type_code, []byte(capsule_data))
-		if recieved_struct == nil { continue }
-		if client.Requests[capsule_request_id][capsule_type_code] == nil { continue }
-		for _, function := range(client.Requests[capsule_request_id][capsule_type_code]) {
-			go function(recieved_struct)
+		if capsule, ok :=  iface.(*Capsule); ok {
+			recieved_struct := client.TypeStore.BuildType(capsule.Type, []byte(capsule.Data))
+			if recieved_struct == nil { continue }
+			if client.Requests[capsule.RequestID][capsule.Type] == nil { continue }
+			for _, function := range(client.Requests[capsule.RequestID][capsule.Type]) {
+				go function(recieved_struct)
+			}
 		}
 	}
 }
