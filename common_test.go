@@ -14,10 +14,10 @@ type Thingy struct {
 }
 
 func BuildThingy(data []byte) interface{} {
-		thing := &Thingy{}
-		err := json.Unmarshal(data, &thing)
-		if err != nil { return nil }
-		return thing
+	thing := &Thingy{}
+	err := json.Unmarshal(data, &thing)
+	if err != nil { return nil }
+	return thing
 }
 
 func TestTypeStoreIsCorrectType(t *testing.T) {
@@ -53,9 +53,13 @@ func TestTypeStoreHasCapsuleBuilder(t *testing.T) {
 
 func TestTypeStoreCanAddType(t *testing.T) {
 	type_store := NewTypeStore()
-	thingy_type := reflect.TypeOf(Thingy{})
-	type_store.AddType(thingy_type, BuildThingy)
-	if type_store.TypeCodes[thingy_type] != 1 {
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
+	if type_store.TypeCodes[inst_type] != 1 {
+		t.Errorf("call to AddType on new TypeStore did not create type_id of 1")
+	}
+	if type_store.TypeCodes[ptr_type] != 1 {
 		t.Errorf("call to AddType on new TypeStore did not create type_id of 1")
 	}
 }
@@ -78,9 +82,13 @@ func TestTypeStoreWontLookupBadCode(t *testing.T) {
 
 func TestTypeStoreCanBuildType(t *testing.T) {
 	type_store := NewTypeStore()
-	thingy_type := reflect.TypeOf(Thingy{})
-	type_store.AddType(thingy_type, BuildThingy)
-	if type_store.TypeCodes[thingy_type] != 1 {
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
+	if type_store.TypeCodes[inst_type] != 1 {
+		t.Errorf("call to AddType on new TypeStore did not create type_id of 1")
+	}
+	if type_store.TypeCodes[ptr_type] != 1 {
 		t.Errorf("call to AddType on new TypeStore did not create type_id of 1")
 	}
 	thingy := Thingy {
@@ -122,7 +130,9 @@ func TestTypeStoreWontBuildUnformattedData(t *testing.T) {
 
 func TestFormat(t *testing.T) {
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
 	thing := Thingy {
 		Name:	"test",
 		ID:		1,
@@ -163,7 +173,9 @@ func TestCantFormatUnknownType(t *testing.T) {
 
 func TestFormatCapsule(t *testing.T) {
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
 	thing := Thingy {
 		Name:	"test",
 		ID:		1,
@@ -221,7 +233,9 @@ func TestCantFormatCapsuleWithUnknownType(t *testing.T) {
 
 func TestNextStruct(t *testing.T) {
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
 	sockets := make(chan net.Conn, 1)
 	server, err := net.Listen("tcp", "localhost:5000")
 	if err != nil {
@@ -305,7 +319,9 @@ func TestNextStruct(t *testing.T) {
 
 func TestNextStructErrorWithBrokenSocket(t *testing.T) {
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
 	sockets := make(chan net.Conn, 1)
 	server, err := net.Listen("tcp", "localhost:5000")
 	if err != nil {
@@ -329,7 +345,9 @@ func TestNextStructErrorWithBrokenSocket(t *testing.T) {
 
 func TestNextStructNilWhenMissing(t *testing.T) {
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	inst_type := reflect.TypeOf(Thingy{})
+	ptr_type := reflect.TypeOf(&Thingy{})
+	type_store.AddType(inst_type, ptr_type, BuildThingy)
 	sockets := make(chan net.Conn, 1)
 	server, err := net.Listen("tcp", "localhost:5000")
 	if err != nil {

@@ -7,9 +7,10 @@ import (
 	"time"
 	//"encoding/json"
 	"fmt"
+	"os"
 )
 
-func TagSocketAll(socket *net.Conn, server *Server) {
+func TagSocketAll(socket net.Conn, server *Server) {
     server.Tags[socket] = append(server.Tags[socket], "all")
     server.Sockets["all"] = append(server.Sockets["all"], socket)
 }
@@ -51,8 +52,6 @@ func TestServerCanReceiveAndTagConnection(t *testing.T) {
 	if server.Tags[server_conns[0]][0] != "all" {
 		t.Errorf("socket did not get tagged as all")
 	}
-	
-	t.Errorf(fmt.Sprintf("%s", <- server.FailedServer))
 }
 
 func TestCanUseClientSocketInServer(t *testing.T) {
@@ -86,17 +85,16 @@ func TestCanUseClientSocketInServer(t *testing.T) {
 		t.Errorf("socket did not get tagged as all")
 	}
 }
-/*
+
 func TestServerCanRunAcceptCallbacks(t *testing.T) {
-	server_filename := "server_test-ipc-" + uuid.NewV4().String()
-	listener, err := net.Listen("unix", server_filename)
+	listener, err := net.Listen("tcp", "localhost:5000")
 	if err != nil {
-		t.Errorf("could not start unix server")
+		t.Errorf("could not start test server on localhost:5000")
 	}
 	defer listener.Close()
-	defer os.RemoveAll(server_filename)
+
 	type_store := NewTypeStore()
-	type_store.AddType(reflect.TypeOf(Thingy{}), BuildThingy)
+	type_store.AddType(reflect.TypeOf(Thingy{}), reflect.TypeOf(&Thingy{}), BuildThingy)
 	server := NewServer(listener, TagSocketAll, &type_store)
 	
 	server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}) {
@@ -129,9 +127,9 @@ func TestServerCanRunAcceptCallbacks(t *testing.T) {
 		t.Errorf("two calls to Accept didn't create two records in server Events")
 	}
 
-	client_socket, err := net.Dial("unix", server_filename)
+	client_socket, err := net.Dial("tcp", "localhost:5000")
 	if err != nil {
-		t.Errorf("could not connect to unix server")
+		t.Errorf("could not connect test client to localhost:5000")
 	}
 	defer client_socket.Close()
 	
@@ -145,15 +143,12 @@ func TestServerCanRunAcceptCallbacks(t *testing.T) {
 	}
 	client_socket.Write(formatted_thingy)
 	time.Sleep(50 * time.Millisecond)		// wait for server to process incoming struct
-	// try to read struct directly
-	//obj, err := nextStruct(*server.Sockets["all"][0], server.TypeStore)
-	//if err != nil { }//panic(err) }
-	//t.Log(obj)
-	//t.Errorf(fmt.Sprintf("%s", <- server.FailedSockets))
 	
-	//thingy_bytes, _ := json.Marshal(thingy)
-	//server.Events["all"][code][0](type_store.BuildType(code, thingy_bytes))
-	//server.Events["all"][code][1](type_store.BuildType(code, thingy_bytes))
+	client_socket2, err := net.Dial("tcp", "localhost:5000")
+	if err != nil {
+		t.Errorf("could not connect test client to localhost:5000")
+	}
+	defer client_socket2.Close()
 	
 	if _, err := os.Stat("accept-test-1.0"); os.IsNotExist(err) {
 		t.Errorf("test file not created when struct recieved")
@@ -164,7 +159,7 @@ func TestServerCanRunAcceptCallbacks(t *testing.T) {
 	os.RemoveAll("accept-test-1.0")
 	os.RemoveAll("accept-test-1.1")
 }
-
+/*
 func TestResponderCanSendResponse(t *testing.T) {
 }
 

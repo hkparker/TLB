@@ -41,11 +41,12 @@ func NewTypeStore() TypeStore {
 	return type_store
 }
 
-func (store *TypeStore) AddType(struct_type reflect.Type, builder Builder) {
+func (store *TypeStore) AddType(inst_type reflect.Type, ptr_type reflect.Type, builder Builder) {
 	type_id := store.NextID
 	store.NextID = store.NextID + 1
 	store.Types[type_id] = builder
-	store.TypeCodes[struct_type] = type_id
+	store.TypeCodes[inst_type] = type_id
+	store.TypeCodes[ptr_type] = type_id
 }
 
 func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {

@@ -9,22 +9,22 @@ import (
 type Server struct {
 	Listener		net.Listener
 	TypeStore		*TypeStore
-	Tag				func(*net.Conn, *Server)
-	Tags			map[*net.Conn][]string
-	Sockets			map[string][]*net.Conn
+	Tag				func(net.Conn, *Server)
+	Tags			map[net.Conn][]string
+	Sockets			map[string][]net.Conn
 	Events			map[string]map[uint16][]func(interface{})
 	Requests		map[string]map[uint16][]func(interface{}, Responder)
 	FailedServer	chan error
 	FailedSockets	chan net.Conn
 }
 
-func NewServer(listener net.Listener, tag func(*net.Conn, *Server), type_store *TypeStore) Server {
+func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store *TypeStore) Server {
 	server := Server {
 		Listener:		listener,
 		TypeStore:		type_store,
 		Tag:			tag,
-		Tags:			make(map[*net.Conn][]string),
-		Sockets:		make(map[string][]*net.Conn),
+		Tags:			make(map[net.Conn][]string),
+		Sockets:		make(map[string][]net.Conn),
 		Events:			make(map[string]map[uint16][]func(interface{})),
 		Requests:		make(map[string]map[uint16][]func(interface{}, Responder)),
 		FailedServer:	make(chan error, 1),
@@ -65,7 +65,7 @@ func (responder *Responder) Respond(object interface{}) error {
 	_, err = responder.Socket.Write(response_bytes)
 	if err != nil {
 		responder.Server.FailedSockets <- responder.Socket
-		delete(responder.Server.Tags, &responder.Socket)
+		delete(responder.Server.Tags, responder.Socket)
 		return err
 	}
 	
@@ -73,12 +73,9 @@ func (responder *Responder) Respond(object interface{}) error {
 }
 
 func (server *Server) process() {
-	//server.FailedServer <- errors.New("made it")
 	for {
 		socket, err := server.Listener.Accept()
-		server.FailedServer <- err
 		if err != nil {
-			//panic(err)
 			server.FailedServer <- err
 			return
 		}
@@ -87,7 +84,7 @@ func (server *Server) process() {
 }
 
 func (server *Server) Insert(socket net.Conn) {
-	server.Tag(&socket, server)
+	server.Tag(socket, server)
 	go server.readStructs(socket)
 }
 
@@ -97,29 +94,26 @@ func (server *Server) readStructs(socket net.Conn) {
 		obj, err := nextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
-			delete(server.Tags, &socket) // lookup tags first nor next line
+			delete(server.Tags, socket) // lookup tags first nor next line
 			// also delete from Sockets (make this an exported Delete function?)
 			return
 		}
-		tags := server.Tags[&socket]
+		tags := server.Tags[socket]
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {
-			// refactor for type assertion
 			for _, tag := range(tags) {
-				obj_value := reflect.Indirect(reflect.ValueOf(obj))
-				embedded_request_id := uint16(obj_value.FieldByName("RequestID").Uint())
-				embedded_type_code := uint16(obj_value.FieldByName("Type").Uint())
-				embedded_data := obj_value.FieldByName("Data").String()
-				if server.Requests[tag][embedded_type_code] == nil { continue }		// depends on how it was created?
-				for _, function := range(server.Requests[tag][embedded_type_code]) {
-					responder := Responder {
-						Server:		server,
-						Socket:		socket,
-						RequestID:	embedded_request_id,
+				if capsule, ok :=  obj.(*Capsule); ok {
+					if server.Requests[tag][capsule.Type] == nil { continue }		// depends on how it was created?
+					for _, function := range(server.Requests[tag][capsule.Type]) {
+						responder := Responder {
+							Server:		server,
+							Socket:		socket,
+							RequestID:	capsule.RequestID,
+						}
+						recieved_struct := server.TypeStore.BuildType(capsule.Type, []byte(capsule.Data))
+						if recieved_struct != nil { go function(recieved_struct, responder) }
 					}
-					recieved_struct := server.TypeStore.BuildType(embedded_type_code, []byte(embedded_data))
-					if recieved_struct != nil { go function(recieved_struct, responder) }
 				}
 			}
 		} else {
