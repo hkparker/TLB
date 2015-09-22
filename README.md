@@ -27,19 +27,22 @@ type InformationalEvent struct {
 	Parameter1	string
 	Parameter2	int
 }
-informational_event := reflect.TypeOf(InformationalEvent{})
+informational_event_inst := reflect.TypeOf(InformationalEvent{})
+informational_event_ptr := reflect.TypeOf(&InformationalEvent{})
 
 Type InformationRequest {
 	Parameter1	string
 }
-information_request := reflect.TypeOf(InformationRequest{})
+information_request_inst := reflect.TypeOf(InformationRequest{})
+information_request_ptr := reflect.TypeOf(&InformationRequest{})
 
 type InformationResponse {
 	Parameter1	string
 	Parameter2	string
 	Parameter3	string
 }
-information_response := reflect.TypeOf(InformationResponse{})
+information_response_inst := reflect.TypeOf(InformationResponse{})
+information_response_ptr := reflect.TypeOf(&InformationResponse{})
 ```
 
 Then, define funcs for each struct that will create the struct from a JSON byte array.  Add these functions to a TypeStore.
@@ -67,9 +70,9 @@ func NewInformationResponse(data []byte) interface{} {
 }
 
 type_store := NewTypeStore()
-type_store.AddType(informational_event, NewInformationalEvent)
-type_store.AddType(information_request, NewInformationRequest)
-type_store.AddType(information_response, NewInformationResponse)
+type_store.AddType(informational_event_inst, informational_event_ptr, NewInformationalEvent)
+type_store.AddType(information_request_inst, informational_event_ptr, NewInformationRequest)
+type_store.AddType(information_response_inst, informational_event_ptr, NewInformationResponse)
 ```
 
 A tagging function is used by the server to tag sockets based on their properties.
