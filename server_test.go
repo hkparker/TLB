@@ -5,10 +5,22 @@ import (
 	"net"
 	"reflect"
 	"time"
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"os"
 )
+
+type Thingy struct {
+        Name    string
+        ID              int
+}
+
+func BuildThingy(data []byte) interface{} {
+        thing := &Thingy{}
+        err := json.Unmarshal(data, &thing)
+        if err != nil { return nil }
+        return thing
+}
 
 func TagSocketAll(socket net.Conn, server *Server) {
     server.Tags[socket] = append(server.Tags[socket], "all")

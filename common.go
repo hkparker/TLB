@@ -37,6 +37,7 @@ func NewTypeStore() TypeStore {
 	}
 	type_store.Types[0] = capsule_builder
 	type_store.TypeCodes[reflect.TypeOf(Capsule{})] = 0
+	//type_store.TypeCodes[reflect.TypeOf(&Capsule{})] = 0
 	
 	return type_store
 }
