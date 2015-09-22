@@ -61,7 +61,7 @@ func (store *TypeStore) BuildType(struct_code uint16, data []byte) interface{} {
 	return function(data)
 }
 
-func format(instance interface{}, type_store *TypeStore) ([]byte, error) {
+func Format(instance interface{}, type_store *TypeStore) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil { return nil, err }
 	
@@ -92,7 +92,7 @@ func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint1
 		Data:		string(bytes),
 	}
 
-	return format(capsule, type_store)
+	return Format(capsule, type_store)
 }
 
 func nextStruct(socket net.Conn, type_store *TypeStore) (interface{}, error) {

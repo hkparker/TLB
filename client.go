@@ -66,7 +66,7 @@ func (client *Client) getRequestID() uint16 {
 }
 
 func (client *Client) Message(instance interface{}) error {
-	message, err := format(instance, client.TypeStore)
+	message, err := Format(instance, client.TypeStore)
 	if err != nil { return err }
 	client.Writing.Lock()
 	_ , err = client.Socket.Write(message)

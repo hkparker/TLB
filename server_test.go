@@ -149,7 +149,7 @@ func TestServerCanRunAcceptCallbacks(t *testing.T) {
 		Name:	"accept-test",
 		ID:		1,
 	}
-	formatted_thingy, err := format(thingy, &type_store)
+	formatted_thingy, err := Format(thingy, &type_store)
 	if err != nil {
 			t.Errorf("could not format thingy")
 	}
