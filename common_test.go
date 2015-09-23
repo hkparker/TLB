@@ -2,7 +2,6 @@ package tlj_test
 
 import (
 	. "github.com/hkparker/TLJ"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
         "encoding/json"
@@ -10,7 +9,7 @@ import (
 	"reflect"
 	"net"
 )
-/*
+
 type Thingy struct {
         Name    string
         ID              int
@@ -22,7 +21,7 @@ func BuildThingy(data []byte) interface{} {
         if err != nil { return nil }
         return thing
 }
-*/
+
 var _ = Describe("Common", func() {
 
 	var (
@@ -218,14 +217,14 @@ var _ = Describe("Common", func() {
 
 		It("returns nill when the struct is missing from the type store", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5002")
+			server, err := net.Listen("tcp", "localhost:5004")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5002")
+			client, err := net.Dial("tcp", "localhost:5004")
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <- sockets
