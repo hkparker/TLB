@@ -201,14 +201,14 @@ var _ = Describe("Common", func() {
 
 		It("reports an error when the socket is broken", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5003")
+			server, err := net.Listen("tcp", "localhost:5000")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5003")
+			client, err := net.Dial("tcp", "localhost:5000")
 			Expect(err).To(BeNil())
 			client.Close()
 			_, err = NextStruct(client, &type_store)
@@ -217,14 +217,14 @@ var _ = Describe("Common", func() {
 
 		It("returns nill when the struct is missing from the type store", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5004")
+			server, err := net.Listen("tcp", "localhost:5001")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5004")
+			client, err := net.Dial("tcp", "localhost:5001")
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <- sockets

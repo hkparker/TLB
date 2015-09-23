@@ -80,6 +80,7 @@ A tagging function is used by the server to tag sockets based on their propertie
 ```
 func TagSocket(socket *net.Conn, server *Server) {
 	server.Tags[socket] = append(server.Tags[socket], "all")
+	server.Sockets["all"] = append(server.Sockets["all"], socket)
 	// with TLS sockets, a client certificate could be used to tag sockets
 	// in I2P, the remote public key could identify sockets
 }
@@ -89,7 +90,7 @@ Next create a server and a client that contain the same TypeStore.
 
 ```
 listener := // Anything that implements net.UnixListener
-server := NewServer(listener, TagSocket, type_store)
+server := NewServer(listener, TagSocket, &type_store)
 
 socket := // Anything that implement net.Conn
 client := NewClient(socket, type_store)
