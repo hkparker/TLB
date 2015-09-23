@@ -8,6 +8,7 @@ import (
         "encoding/json"
 	"encoding/binary"
 	"reflect"
+	"net"
 )
 /*
 type Thingy struct {
@@ -104,7 +105,7 @@ var _ = Describe("Common", func() {
 		})
 	})
 
-	Describe("format", func() {
+	Describe("Format", func() {
 
 		It("formats data correctly", func() {
 			thingy_bytes, err := Format(thingy, &populated_type_store)
@@ -121,31 +122,119 @@ var _ = Describe("Common", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("", func() {
-			//
+		It("wont format structs missing from the type store", func() {
+			_, err := Format(thingy, &type_store)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 
-	Describe("formatCapsule", func() {
+	Describe("FormatCapsule", func() {
 
-		It("", func() {
-			//
+		It("formats capsules correctly", func() {
+			capsule_bytes, err := FormatCapsule(thingy, &populated_type_store, 1)
+			Expect(err).To(BeNil())
+			type_bytes := capsule_bytes[:2]
+			size_bytes := capsule_bytes[2:6]
+			capsule_data := capsule_bytes[6:]
+			type_int := binary.LittleEndian.Uint16(type_bytes)
+			size_int := binary.LittleEndian.Uint32(size_bytes)
+			Expect(type_int).To(Equal(uint16(0)))
+			Expect(size_int).To(Equal(uint32(len(capsule_data))))
+			restored_capsule := &Capsule{}
+			err = json.Unmarshal(capsule_data, &restored_capsule)
+			Expect(err).To(BeNil())
+			Expect(restored_capsule.RequestID).To(Equal(uint16(1)))
+			Expect(restored_capsule.Type).To(Equal(uint16(1)))
+			restored_thing := &Thingy{}
+			err = json.Unmarshal([]byte(restored_capsule.Data), &restored_thing)
+			Expect(err).To(BeNil())
+			Expect(restored_thing.Name).To(Equal("test"))
+			Expect(restored_thing.ID).To(Equal(1))
 		})
-		It("", func() {
-			//
+
+		It("wont format a capsule with structs missing from the type store", func() {
+			_, err := FormatCapsule(thingy, &type_store, 1)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 
-	Describe("nextStruct", func() {
+	Describe("NextStruct", func() {
 
-		It("", func() {
-			//
+		It("can read multiple structs", func() {
+			sockets := make(chan net.Conn, 1)
+			server, err := net.Listen("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer server.Close()
+			go func() {
+				conn, _ := server.Accept()
+				sockets <- conn
+			}()
+			client, err := net.Dial("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer client.Close()
+			server_side := <- sockets
+			unicode_thingy := Thingy {
+				Name:   "😃",
+				ID:	2,
+			}
+			thingy_bytes, _ := Format(thingy, &populated_type_store)
+			unicode_thingy_bytes, _ := Format(unicode_thingy, &populated_type_store)
+			server_side.Write(thingy_bytes)
+			server_side.Write(unicode_thingy_bytes)
+			iface, err := NextStruct(client, &populated_type_store)
+			Expect(err).To(BeNil())
+			if restored_thingy, correct_type :=  iface.(*Thingy); correct_type {
+				Expect(restored_thingy.Name).To(Equal(thingy.Name))
+				Expect(restored_thingy.ID).To(Equal(thingy.ID))
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
+			iface, err = NextStruct(client, &populated_type_store)
+			Expect(err).To(BeNil())
+			if restored_thingy, correct_type := iface.(*Thingy); correct_type {
+				Expect(restored_thingy.Name).To(Equal(unicode_thingy.Name))
+				Expect(restored_thingy.ID).To(Equal(unicode_thingy.ID))
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
+
 		})
-		It("", func() {
-			//
+
+		It("reports an error when the socket is broken", func() {
+			sockets := make(chan net.Conn, 1)
+			server, err := net.Listen("tcp", "localhost:5003")
+			Expect(err).To(BeNil())
+			defer server.Close()
+			go func() {
+				conn, _ := server.Accept()
+				sockets <- conn
+			}()
+			client, err := net.Dial("tcp", "localhost:5003")
+			Expect(err).To(BeNil())
+			client.Close()
+			_, err = NextStruct(client, &type_store)
+			Expect(err).ToNot(BeNil())
 		})
-		It("", func() {
-			//
+
+		It("returns nill when the struct is missing from the type store", func() {
+			sockets := make(chan net.Conn, 1)
+			server, err := net.Listen("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer server.Close()
+			go func() {
+				conn, _ := server.Accept()
+				sockets <- conn
+			}()
+			client, err := net.Dial("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer client.Close()
+			server_side := <- sockets
+			thingy_bytes, _ := Format(thingy, &populated_type_store)
+			server_side.Write(thingy_bytes)
+			iface, err := NextStruct(client, &type_store)
+			Expect(iface).To(BeNil())
+			Expect(err).To(BeNil())
 		})
 	})
 })
+

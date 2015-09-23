@@ -41,7 +41,7 @@ func NewClient(socket net.Conn, type_store *TypeStore) Client {
 
 func (client *Client) process() {
 	for {
-		iface, err := nextStruct(client.Socket, client.TypeStore)
+		iface, err := NextStruct(client.Socket, client.TypeStore)
 		if err != nil {
 			client.Dead <- err
 			break

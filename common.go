@@ -79,7 +79,7 @@ func Format(instance interface{}, type_store *TypeStore) ([]byte, error) {
 	return bytes, err
 }
 
-func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint16) ([]byte, error) {
+func FormatCapsule(instance interface{}, type_store *TypeStore, request_id uint16) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil { return bytes, err }
 
@@ -95,7 +95,7 @@ func formatCapsule(instance interface{}, type_store *TypeStore, request_id uint1
 	return Format(capsule, type_store)
 }
 
-func nextStruct(socket net.Conn, type_store *TypeStore) (interface{}, error) {
+func NextStruct(socket net.Conn, type_store *TypeStore) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
 	if err != nil { return nil, err }

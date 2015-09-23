@@ -59,7 +59,7 @@ type Responder struct {
 }
 
 func (responder *Responder) Respond(object interface{}) error {
-	response_bytes, err := formatCapsule(object, responder.Server.TypeStore, responder.RequestID)
+	response_bytes, err := FormatCapsule(object, responder.Server.TypeStore, responder.RequestID)
 	if err != nil { return err }
 	
 	_, err = responder.Socket.Write(response_bytes)
@@ -91,7 +91,7 @@ func (server *Server) Insert(socket net.Conn) {
 func (server *Server) readStructs(socket net.Conn) {
 	defer socket.Close()
 	for {
-		obj, err := nextStruct(socket, server.TypeStore)
+		obj, err := NextStruct(socket, server.TypeStore)
 		if err != nil {
 			server.FailedSockets <- socket
 			delete(server.Tags, socket) // lookup tags first nor next line
