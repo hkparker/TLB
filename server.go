@@ -101,7 +101,7 @@ func (server *Server) readStructs(socket net.Conn) {
 		tags := server.Tags[socket]
 		if obj == nil {
 			continue
-		} else if reflect.TypeOf(obj) == reflect.TypeOf(Capsule{}) {
+		} else if reflect.TypeOf(obj) == reflect.TypeOf(&Capsule{}) {
 			for _, tag := range(tags) {
 				if capsule, ok :=  obj.(*Capsule); ok {
 					if server.Requests[tag][capsule.Type] == nil { continue }		// depends on how it was created?
@@ -120,7 +120,7 @@ func (server *Server) readStructs(socket net.Conn) {
 			for _, tag := range(tags) {
 				recieved_type, present := server.TypeStore.LookupCode(reflect.TypeOf(obj))
 				if !present { continue }
-				if server.Events[tag][recieved_type] == nil { continue }			// depends on how it was created?
+				if server.Events[tag][recieved_type] == nil { continue }
 				for _, function := range(server.Events[tag][recieved_type]) {
 					go function(obj)
 				}

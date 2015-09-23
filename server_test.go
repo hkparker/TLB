@@ -104,7 +104,42 @@ var _ = Describe("Server", func() {
 	})
 
 	It("can run accept request callbacks", func() {
-		
+		listener, err := net.Listen("tcp", "localhost:5006")
+		Expect(err).To(BeNil())
+		defer listener.Close()
+		server := NewServer(listener, TagSocketAll, &populated_type_store)
+		first_chan := make(chan string)
+		second_chan := make(chan string)
+		server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ Responder) {	
+			if received_thingy, correct_type :=  iface.(*Thingy); correct_type {
+				first_chan <- fmt.Sprintf("acceptrequest-%s-%d.0", received_thingy.Name, received_thingy.ID)
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
+		})
+		server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ Responder) {
+			if received_thingy, correct_type :=  iface.(*Thingy); correct_type {
+				second_chan <- fmt.Sprintf("acceptrequest-%s-%d.1", received_thingy.Name, received_thingy.ID)
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
+		})
+		Expect(server.Requests["all"]).ToNot(BeNil())
+		Expect(server.Requests["all"][1]).ToNot(BeNil())
+		Expect(len(server.Requests["all"][1])).To(Equal(2))
+		client_socket, err := net.Dial("tcp", "localhost:5006")
+		Expect(err).To(BeNil())
+		defer client_socket.Close()
+		capsule_bytes, err := FormatCapsule(thingy, &populated_type_store, 1)
+		Expect(err).To(BeNil())
+		client_socket.Write(capsule_bytes)
+		client_socket2, err := net.Dial("tcp", "localhost:5006")
+		Expect(err).To(BeNil())
+		defer client_socket2.Close()
+		first_incoming_thingy := <- first_chan
+		second_incoming_thingy := <- second_chan
+		Expect(first_incoming_thingy).To(Equal("acceptrequest-test-1.0"))
+		Expect(second_incoming_thingy).To(Equal("acceptrequest-test-1.1"))
 	})
 
 	Describe("Responder", func() {
