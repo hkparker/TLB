@@ -5,9 +5,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"net"
-	"time"
 	"reflect"
-	"os"
 	"fmt"
 )
 
@@ -71,24 +69,18 @@ var _ = Describe("Server", func() {
 		Expect(err).To(BeNil())
 		defer listener.Close()
 		server := NewServer(listener, TagSocketAll, &populated_type_store)
+		first_chan := make(chan string)
+		second_chan := make(chan string)
 		server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}) {	
 			if received_thingy, correct_type :=  iface.(*Thingy); correct_type {
-				Expect(received_thingy.Name).To(Equal(thingy.Name))
-				Expect(received_thingy.ID).To(Equal(thingy.ID))
-				f, err := os.Create(fmt.Sprintf("accept-%s-%d.0", thingy.Name, thingy.ID))
-				Expect(err).To(BeNil())
-				f.Close()
+				first_chan <- fmt.Sprintf("accept-%s-%d.0", received_thingy.Name, received_thingy.ID)
 			} else {
 				Expect(correct_type).To(Equal(true))
 			}
 		})
 		server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}) {
 			if received_thingy, correct_type :=  iface.(*Thingy); correct_type {
-				Expect(received_thingy.Name).To(Equal(thingy.Name))
-				Expect(received_thingy.ID).To(Equal(thingy.ID))
-				f, err := os.Create(fmt.Sprintf("accept-%s-%d.1", thingy.Name, thingy.ID))
-				Expect(err).To(BeNil())
-				f.Close()
+				second_chan <- fmt.Sprintf("accept-%s-%d.1", received_thingy.Name, received_thingy.ID)
 			} else {
 				Expect(correct_type).To(Equal(true))
 			}
@@ -102,16 +94,13 @@ var _ = Describe("Server", func() {
 		thingy_bytes, err := Format(thingy, &populated_type_store)
 		Expect(err).To(BeNil())
 		client_socket.Write(thingy_bytes)
-		time.Sleep(10 * time.Millisecond)	// give the server time to run the callbacks
 		client_socket2, err := net.Dial("tcp", "localhost:5005")
 		Expect(err).To(BeNil())
 		defer client_socket2.Close()
-		_, err = os.Stat("accept-test-1.0")
-		Expect(err).To(BeNil())
-		_, err = os.Stat("accept-test-1.1")
-		Expect(err).To(BeNil())
-		os.RemoveAll("accept-test-1.0")
-		os.RemoveAll("accept-test-1.1")
+		first_incoming_thingy := <- first_chan
+		second_incoming_thingy := <- second_chan
+		Expect(first_incoming_thingy).To(Equal("accept-test-1.0"))
+		Expect(second_incoming_thingy).To(Equal("accept-test-1.1"))
 	})
 
 	It("can run accept request callbacks", func() {
