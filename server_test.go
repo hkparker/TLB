@@ -7,6 +7,7 @@ import (
 	"net"
 	"reflect"
 	"fmt"
+	"encoding/json"
 )
 
 func TagSocketAll(socket net.Conn, server *Server) {
@@ -33,7 +34,6 @@ var _ = Describe("Server", func() {
                         ID:     1,
                 }
         })
-
 
 	It("can receive sockets and tag them", func() {
 		listener, err := net.Listen("tcp", "localhost:5002")
@@ -145,7 +145,39 @@ var _ = Describe("Server", func() {
 	Describe("Responder", func() {
 
 		It("can be used to send a response", func() {
-
+			listener, err := net.Listen("tcp", "localhost:5007")
+			Expect(err).To(BeNil())
+			defer listener.Close()
+			sockets := make(chan net.Conn, 1)
+			go func() {
+				conn, _ := listener.Accept()
+				sockets <- conn
+			}()
+			client, err := net.Dial("tcp", "localhost:5007")
+			Expect(err).To(BeNil())
+			defer client.Close()
+			server_side := <- sockets
+			server := NewServer(listener, TagSocketAll, &populated_type_store)
+			responder := Responder {
+				Server:		&server,
+				Socket:		server_side,
+				RequestID:	1,
+			}
+			err = responder.Respond(thingy)
+			Expect(err).To(BeNil())
+			iface, err := NextStruct(client, &populated_type_store)
+			Expect(err).To(BeNil())
+			if response, correct_type := iface.(*Capsule); correct_type {
+				Expect(response.RequestID).To(Equal(uint16(1)))
+				Expect(response.Type).To(Equal(uint16(1)))
+				restored_thing := &Thingy{}
+				err = json.Unmarshal([]byte(response.Data), &restored_thing)
+				Expect(err).To(BeNil())
+				Expect(restored_thing.ID).To(Equal(thingy.ID))
+				Expect(restored_thing.Name).To(Equal(thingy.Name))
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
 		})
 	})
 })

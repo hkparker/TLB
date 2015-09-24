@@ -3,30 +3,29 @@ package tlj
 import (
 	"net"
 	"reflect"
-	//"errors"
 )
 
 type Server struct {
-	Listener		net.Listener
-	TypeStore		*TypeStore
-	Tag				func(net.Conn, *Server)
-	Tags			map[net.Conn][]string
-	Sockets			map[string][]net.Conn
-	Events			map[string]map[uint16][]func(interface{})
-	Requests		map[string]map[uint16][]func(interface{}, Responder)
+	Listener	net.Listener
+	TypeStore	*TypeStore
+	Tag		func(net.Conn, *Server)
+	Tags		map[net.Conn][]string
+	Sockets		map[string][]net.Conn
+	Events		map[string]map[uint16][]func(interface{})
+	Requests	map[string]map[uint16][]func(interface{}, Responder)
 	FailedServer	chan error
 	FailedSockets	chan net.Conn
 }
 
 func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store *TypeStore) Server {
 	server := Server {
-		Listener:		listener,
-		TypeStore:		type_store,
-		Tag:			tag,
-		Tags:			make(map[net.Conn][]string),
-		Sockets:		make(map[string][]net.Conn),
-		Events:			make(map[string]map[uint16][]func(interface{})),
-		Requests:		make(map[string]map[uint16][]func(interface{}, Responder)),
+		Listener:	listener,
+		TypeStore:	type_store,
+		Tag:		tag,
+		Tags:		make(map[net.Conn][]string),
+		Sockets:	make(map[string][]net.Conn),
+		Events:		make(map[string]map[uint16][]func(interface{})),
+		Requests:	make(map[string]map[uint16][]func(interface{}, Responder)),
 		FailedServer:	make(chan error, 1),
 		FailedSockets:	make(chan net.Conn, 200),
 	}
