@@ -58,8 +58,6 @@ func (client *Client) process() {
 }
 
 func (client *Client) getRequestID() uint16 {
-	// cycle over old requests when id reaches max?
-	// generate randomly until full?
 	id := client.NextID
 	client.NextID = id + 1
 	return id
@@ -90,7 +88,9 @@ func (client *Client) Request(instance interface{}) (*Request, error) {
 		Type:		request.Type,
 		Data:		request.Data,
 	}
+	client.Inserting.Lock()
 	client.Requests[request.RequestID] = make(map[uint16][]func(interface{}))
+	client.Inserting.Unlock()
 	err = client.Message(capsule)
 	return request, err
 }

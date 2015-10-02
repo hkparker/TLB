@@ -6,6 +6,7 @@ import (
 	"errors"
 	"encoding/json"
 	"encoding/binary"
+	"sync"
 )
 
 type Capsule struct {
@@ -17,9 +18,10 @@ type Capsule struct {
 type Builder func([]byte) interface{}
 
 type TypeStore struct {
-	Types			map[uint16]Builder
-	TypeCodes		map[reflect.Type]uint16
-	NextID			uint16
+	Types		map[uint16]Builder
+	TypeCodes	map[reflect.Type]uint16
+	NextID		uint16
+	InsertType	*sync.Mutex
 }
 
 func NewTypeStore() TypeStore {
@@ -27,6 +29,7 @@ func NewTypeStore() TypeStore {
 		Types:		make(map[uint16]Builder),
 		TypeCodes:	make(map[reflect.Type]uint16),
 		NextID:		1,
+		InsertType:	&sync.Mutex{},
 	}
 	
 	capsule_builder := func(data []byte) interface{} {
@@ -37,7 +40,7 @@ func NewTypeStore() TypeStore {
 	}
 	type_store.Types[0] = capsule_builder
 	type_store.TypeCodes[reflect.TypeOf(Capsule{})] = 0
-	//type_store.TypeCodes[reflect.TypeOf(&Capsule{})] = 0
+	type_store.TypeCodes[reflect.TypeOf(&Capsule{})] = 0
 	
 	return type_store
 }
@@ -45,9 +48,11 @@ func NewTypeStore() TypeStore {
 func (store *TypeStore) AddType(inst_type reflect.Type, ptr_type reflect.Type, builder Builder) {
 	type_id := store.NextID
 	store.NextID = store.NextID + 1
+	store.InsertType.Lock()
 	store.Types[type_id] = builder
 	store.TypeCodes[inst_type] = type_id
 	store.TypeCodes[ptr_type] = type_id
+	store.InsertType.Unlock()
 }
 
 func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {

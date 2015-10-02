@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"net"
 	"encoding/json"
+	"time"
 )
 
 var _ = Describe("Client", func() {
@@ -81,7 +82,36 @@ var _ = Describe("Client", func() {
 		}
 	})
 
-	It("can run on response callbacks", func() {
-		
+	It("can run on response callbacks", func() {	
+		listener, err := net.Listen("tcp", "localhost:5010")
+		Expect(err).To(BeNil())
+		defer listener.Close()
+		server := NewServer(listener, TagSocketAll, &populated_type_store)
+		server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, responder Responder) {
+			resp := Thingy {
+				ID:	2,
+				Name:	"response!",
+			}
+			time.Sleep(1 * time.Second)
+			responder.Respond(resp)
+		})
+		client_socket, err := net.Dial("tcp", "localhost:5010")
+		Expect(err).To(BeNil())
+		defer client_socket.Close()
+		client := NewClient(client_socket, &populated_type_store)
+		request, err := client.Request(thingy)
+		Expect(err).To(BeNil())
+		run_chan := make(chan string)
+		request.OnResponse(reflect.TypeOf(&Thingy{}), func(iface interface{}){
+			if response, correct_type := iface.(*Thingy); correct_type {
+				Expect(response.ID).To(Equal(2))
+				Expect(response.Name).To(Equal("response!"))
+				run_chan <- "ran"
+			} else {
+				Expect(correct_type).To(Equal(true))
+			}
+		})
+		ran := <- run_chan
+		Expect(ran).To(Equal("ran"))
 	})
 })

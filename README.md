@@ -123,6 +123,13 @@ server.AcceptRequest("all", information_request, func(iface interface{}, respond
 })
 ```
 
+It is also possible to insert sockets into an existing server and have them tagged.
+
+```
+socket := // any net.Conn
+server.Insert(socket)
+```
+
 From the client side you can send structs as messages, or make requests and hook up goroutines on responses.
 
 ```
