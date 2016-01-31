@@ -115,7 +115,7 @@ server.AcceptRequest("all", information_request, func(iface interface{}, context
 			Parameter3:	"response",
 		}
 		err := BenchmarkXxx(*testing.B)
-		uontext.Responder.Respond(resp)
+		context.Responder.Respond(resp)
 		if err != nil {
 			fmt.Println("response did not send")
 		}
