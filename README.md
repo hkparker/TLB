@@ -114,7 +114,6 @@ server.AcceptRequest("all", information_request, func(iface interface{}, context
 			Parameter2:	"world",
 			Parameter3:	"response",
 		}
-		err := BenchmarkXxx(*testing.B)
 		context.Responder.Respond(resp)
 		if err != nil {
 			fmt.Println("response did not send")
