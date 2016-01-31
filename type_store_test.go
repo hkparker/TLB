@@ -1,56 +1,57 @@
 package tlj_test
 
 import (
+	"encoding/binary"
+	"encoding/json"
 	. "github.com/hkparker/TLJ"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-        "encoding/json"
-	"encoding/binary"
-	"reflect"
 	"net"
+	"reflect"
 )
 
 type Thingy struct {
-        Name    string
-        ID              int
+	Name string
+	ID   int
 }
 
 func BuildThingy(data []byte) interface{} {
-        thing := &Thingy{}
-        err := json.Unmarshal(data, &thing)
-        if err != nil { return nil }
-        return thing
+	thing := &Thingy{}
+	err := json.Unmarshal(data, &thing)
+	if err != nil {
+		return nil
+	}
+	return thing
 }
 
-var _ = Describe("Common", func() {
+var _ = Describe("TypeStore", func() {
 
 	var (
-		type_store		TypeStore
-		populated_type_store	TypeStore
-		capsule			Capsule
-		thingy			Thingy
+		type_store           TypeStore
+		populated_type_store TypeStore
+		capsule              Capsule
+		thingy               Thingy
 	)
 
 	BeforeEach(func() {
-       	        type_store = NewTypeStore()
+		type_store = NewTypeStore()
 		populated_type_store = NewTypeStore()
 		inst_type := reflect.TypeOf(Thingy{})
- 		ptr_type := reflect.TypeOf(&Thingy{})
- 		populated_type_store.AddType(inst_type, ptr_type, BuildThingy)
-		capsule = Capsule {
-			RequestID:	1,
-			Type:		1,
-			Data:		"test",
+		ptr_type := reflect.TypeOf(&Thingy{})
+		populated_type_store.AddType(inst_type, ptr_type, BuildThingy)
+		capsule = Capsule{
+			RequestID: 1,
+			Type:      1,
+			Data:      "test",
 		}
-		thingy = Thingy {
-			Name:	"test",
-			ID:	1,
+		thingy = Thingy{
+			Name: "test",
+			ID:   1,
 		}
 	})
 
-	Describe("TypeStore", func() {
-
-		It("should contain a functional capsule builder when created", func() {
+	Describe("NewTypeStore", func() {
+		It("can unmarshal a capsule when created", func() {
 			capsule_bytes, _ := json.Marshal(capsule)
 			iface := type_store.BuildType(0, capsule_bytes)
 			if restored, correct_type := iface.(*Capsule); correct_type {
@@ -61,15 +62,47 @@ var _ = Describe("Common", func() {
 				Expect(correct_type).To(Equal(true))
 			}
 		})
+	})
 
+	Describe("AddType", func() {
 		It("can add a new type", func() {
 			inst_type := reflect.TypeOf(Thingy{})
 			ptr_type := reflect.TypeOf(&Thingy{})
-			type_store.AddType(inst_type, ptr_type, BuildThingy)
+			err := type_store.AddType(inst_type, ptr_type, BuildThingy)
+			Expect(err).To(BeNil())
 			Expect(type_store.TypeCodes[inst_type]).To(Equal(uint16(1)))
 			Expect(type_store.TypeCodes[ptr_type]).To(Equal(uint16(1)))
 		})
 
+		It("reports an error with nil instance type", func() {
+			ptr_type := reflect.TypeOf(&Thingy{})
+			err := type_store.AddType(nil, ptr_type, BuildThingy)
+			Expect(err).ToNot(BeNil())
+		})
+
+		It("reports an error with nil pointer type", func() {
+			inst_type := reflect.TypeOf(Thingy{})
+			err := type_store.AddType(inst_type, nil, BuildThingy)
+			Expect(err).ToNot(BeNil())
+		})
+
+		It("reports an error with nil builder", func() {
+			inst_type := reflect.TypeOf(Thingy{})
+			ptr_type := reflect.TypeOf(&Thingy{})
+			err := type_store.AddType(inst_type, ptr_type, nil)
+			Expect(err).ToNot(BeNil())
+		})
+
+		Measure("it should add types quickly", func(b Benchmarker) {
+			b.Time("runtime", func() {
+				inst_type := reflect.TypeOf(Thingy{})
+				ptr_type := reflect.TypeOf(&Thingy{})
+				type_store.AddType(inst_type, ptr_type, BuildThingy)
+			})
+		}, 100)
+	})
+
+	Describe("LookupCode", func() {
 		It("correctly looks up codes", func() {
 			code, present := type_store.LookupCode(reflect.TypeOf(Capsule{}))
 			Expect(present).To(Equal(true))
@@ -81,8 +114,10 @@ var _ = Describe("Common", func() {
 			Expect(present).To(Equal(false))
 			Expect(code).To(Equal(uint16(0)))
 		})
+	})
 
-		It("can build a type", func() {	
+	Describe("BuildType", func() {
+		It("can build a type", func() {
 			thingy_bytes, _ := json.Marshal(thingy)
 			iface := populated_type_store.BuildType(1, thingy_bytes)
 			if restored, correct_type := iface.(*Thingy); correct_type {
@@ -105,9 +140,8 @@ var _ = Describe("Common", func() {
 	})
 
 	Describe("Format", func() {
-
 		It("formats data correctly", func() {
-			thingy_bytes, err := Format(thingy, &populated_type_store)
+			thingy_bytes, err := populated_type_store.Format(thingy)
 			Expect(err).To(BeNil())
 			type_bytes := thingy_bytes[:2]
 			size_bytes := thingy_bytes[2:6]
@@ -121,16 +155,26 @@ var _ = Describe("Common", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("wont format structs missing from the type store", func() {
-			_, err := Format(thingy, &type_store)
+		It("returns an error when type missing from store", func() {
+			_, err := type_store.Format(thingy)
 			Expect(err).ToNot(BeNil())
 		})
+
+		It("returns an error when the instance is nil", func() {
+			_, err := type_store.Format(nil)
+			Expect(err).ToNot(BeNil())
+		})
+
+		Measure("it should format structs quickly", func(b Benchmarker) {
+			b.Time("runtime", func() {
+				populated_type_store.Format(thingy)
+			})
+		}, 100)
 	})
 
 	Describe("FormatCapsule", func() {
-
 		It("formats capsules correctly", func() {
-			capsule_bytes, err := FormatCapsule(thingy, &populated_type_store, 1)
+			capsule_bytes, err := populated_type_store.FormatCapsule(thingy, 1)
 			Expect(err).To(BeNil())
 			type_bytes := capsule_bytes[:2]
 			size_bytes := capsule_bytes[2:6]
@@ -151,14 +195,24 @@ var _ = Describe("Common", func() {
 			Expect(restored_thing.ID).To(Equal(1))
 		})
 
-		It("wont format a capsule with structs missing from the type store", func() {
-			_, err := FormatCapsule(thingy, &type_store, 1)
+		It("returns an error when type missing from type store", func() {
+			_, err := type_store.FormatCapsule(thingy, 1)
 			Expect(err).ToNot(BeNil())
 		})
+
+		It("returns an error when the instance is nil", func() {
+			_, err := type_store.FormatCapsule(nil, 1)
+			Expect(err).ToNot(BeNil())
+		})
+
+		Measure("it should format capsules quickly", func(b Benchmarker) {
+			b.Time("runtime", func() {
+				populated_type_store.Format(thingy)
+			})
+		}, 100)
 	})
 
 	Describe("NextStruct", func() {
-
 		It("can read multiple structs", func() {
 			sockets := make(chan net.Conn, 1)
 			server, err := net.Listen("tcp", "localhost:5002")
@@ -171,24 +225,24 @@ var _ = Describe("Common", func() {
 			client, err := net.Dial("tcp", "localhost:5002")
 			Expect(err).To(BeNil())
 			defer client.Close()
-			server_side := <- sockets
-			unicode_thingy := Thingy {
-				Name:   "😃",
-				ID:	2,
+			server_side := <-sockets
+			unicode_thingy := Thingy{
+				Name: "😃",
+				ID:   2,
 			}
-			thingy_bytes, _ := Format(thingy, &populated_type_store)
-			unicode_thingy_bytes, _ := Format(unicode_thingy, &populated_type_store)
+			thingy_bytes, _ := populated_type_store.Format(thingy)
+			unicode_thingy_bytes, _ := populated_type_store.Format(unicode_thingy)
 			server_side.Write(thingy_bytes)
 			server_side.Write(unicode_thingy_bytes)
-			iface, err := NextStruct(client, &populated_type_store)
+			iface, err := populated_type_store.NextStruct(client)
 			Expect(err).To(BeNil())
-			if restored_thingy, correct_type :=  iface.(*Thingy); correct_type {
+			if restored_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(restored_thingy.Name).To(Equal(thingy.Name))
 				Expect(restored_thingy.ID).To(Equal(thingy.ID))
 			} else {
 				Expect(correct_type).To(Equal(true))
 			}
-			iface, err = NextStruct(client, &populated_type_store)
+			iface, err = populated_type_store.NextStruct(client)
 			Expect(err).To(BeNil())
 			if restored_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(restored_thingy.Name).To(Equal(unicode_thingy.Name))
@@ -196,7 +250,6 @@ var _ = Describe("Common", func() {
 			} else {
 				Expect(correct_type).To(Equal(true))
 			}
-
 		})
 
 		It("reports an error when the socket is broken", func() {
@@ -211,11 +264,11 @@ var _ = Describe("Common", func() {
 			client, err := net.Dial("tcp", "localhost:5000")
 			Expect(err).To(BeNil())
 			client.Close()
-			_, err = NextStruct(client, &type_store)
+			_, err = type_store.NextStruct(client)
 			Expect(err).ToNot(BeNil())
 		})
 
-		It("returns nill when the struct is missing from the type store", func() {
+		It("returns nil when the struct is missing from the type store", func() {
 			sockets := make(chan net.Conn, 1)
 			server, err := net.Listen("tcp", "localhost:5001")
 			Expect(err).To(BeNil())
@@ -227,13 +280,30 @@ var _ = Describe("Common", func() {
 			client, err := net.Dial("tcp", "localhost:5001")
 			Expect(err).To(BeNil())
 			defer client.Close()
-			server_side := <- sockets
-			thingy_bytes, _ := Format(thingy, &populated_type_store)
+			server_side := <-sockets
+			thingy_bytes, _ := populated_type_store.Format(thingy)
 			server_side.Write(thingy_bytes)
-			iface, err := NextStruct(client, &type_store)
+			iface, err := type_store.NextStruct(client)
 			Expect(iface).To(BeNil())
 			Expect(err).To(BeNil())
 		})
+
+		It("returns an error when too few bytes are written", func() {
+			sockets := make(chan net.Conn, 1)
+			server, err := net.Listen("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer server.Close()
+			go func() {
+				conn, _ := server.Accept()
+				sockets <- conn
+			}()
+			client, err := net.Dial("tcp", "localhost:5002")
+			Expect(err).To(BeNil())
+			defer client.Close()
+			server_side := <-sockets
+			server_side.Write([]byte{0x00, 0x01, 0x02})
+			_, err = type_store.NextStruct(client)
+			Expect(err).ToNot(BeNil())
+		})
 	})
 })
-
