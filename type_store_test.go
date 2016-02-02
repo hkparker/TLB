@@ -15,7 +15,7 @@ type Thingy struct {
 	ID   int
 }
 
-func BuildThingy(data []byte) interface{} {
+func BuildThingy(data []byte, _ TLJContext) interface{} {
 	thing := &Thingy{}
 	err := json.Unmarshal(data, &thing)
 	if err != nil {
@@ -53,7 +53,7 @@ var _ = Describe("TypeStore", func() {
 	Describe("NewTypeStore", func() {
 		It("can unmarshal a capsule when created", func() {
 			capsule_bytes, _ := json.Marshal(capsule)
-			iface := type_store.BuildType(0, capsule_bytes)
+			iface := type_store.BuildType(0, capsule_bytes, TLJContext{})
 			if restored, correct_type := iface.(*Capsule); correct_type {
 				Expect(restored.RequestID).To(Equal(capsule.RequestID))
 				Expect(restored.Type).To(Equal(capsule.Type))
@@ -119,7 +119,7 @@ var _ = Describe("TypeStore", func() {
 	Describe("BuildType", func() {
 		It("can build a type", func() {
 			thingy_bytes, _ := json.Marshal(thingy)
-			iface := populated_type_store.BuildType(1, thingy_bytes)
+			iface := populated_type_store.BuildType(1, thingy_bytes, TLJContext{})
 			if restored, correct_type := iface.(*Thingy); correct_type {
 				Expect(restored.Name).To(Equal(thingy.Name))
 				Expect(restored.ID).To(Equal(thingy.ID))
@@ -129,12 +129,12 @@ var _ = Describe("TypeStore", func() {
 		})
 
 		It("wont build bad codes", func() {
-			iface := type_store.BuildType(1, make([]byte, 0))
+			iface := type_store.BuildType(1, make([]byte, 0), TLJContext{})
 			Expect(iface).To(BeNil())
 		})
 
 		It("wont build unformatted data", func() {
-			iface := type_store.BuildType(0, []byte("notjson"))
+			iface := type_store.BuildType(0, []byte("notjson"), TLJContext{})
 			Expect(iface).To(BeNil())
 		})
 	})
@@ -234,7 +234,7 @@ var _ = Describe("TypeStore", func() {
 			unicode_thingy_bytes, _ := populated_type_store.Format(unicode_thingy)
 			server_side.Write(thingy_bytes)
 			server_side.Write(unicode_thingy_bytes)
-			iface, err := populated_type_store.NextStruct(client)
+			iface, err := populated_type_store.NextStruct(client, TLJContext{})
 			Expect(err).To(BeNil())
 			if restored_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(restored_thingy.Name).To(Equal(thingy.Name))
@@ -242,7 +242,7 @@ var _ = Describe("TypeStore", func() {
 			} else {
 				Expect(correct_type).To(Equal(true))
 			}
-			iface, err = populated_type_store.NextStruct(client)
+			iface, err = populated_type_store.NextStruct(client, TLJContext{})
 			Expect(err).To(BeNil())
 			if restored_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(restored_thingy.Name).To(Equal(unicode_thingy.Name))
@@ -264,7 +264,7 @@ var _ = Describe("TypeStore", func() {
 			client, err := net.Dial("tcp", "localhost:5000")
 			Expect(err).To(BeNil())
 			client.Close()
-			_, err = type_store.NextStruct(client)
+			_, err = type_store.NextStruct(client, TLJContext{})
 			Expect(err).ToNot(BeNil())
 		})
 
@@ -283,7 +283,7 @@ var _ = Describe("TypeStore", func() {
 			server_side := <-sockets
 			thingy_bytes, _ := populated_type_store.Format(thingy)
 			server_side.Write(thingy_bytes)
-			iface, err := type_store.NextStruct(client)
+			iface, err := type_store.NextStruct(client, TLJContext{})
 			Expect(iface).To(BeNil())
 			Expect(err).To(BeNil())
 		})
@@ -302,7 +302,7 @@ var _ = Describe("TypeStore", func() {
 			defer client.Close()
 			server_side := <-sockets
 			server_side.Write([]byte{0x00, 0x01, 0x02})
-			_, err = type_store.NextStruct(client)
+			_, err = type_store.NextStruct(client, TLJContext{})
 			Expect(err).ToNot(BeNil())
 		})
 	})

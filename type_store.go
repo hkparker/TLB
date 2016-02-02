@@ -15,7 +15,7 @@ type Capsule struct {
 	Data      string
 }
 
-type Builder func([]byte) interface{}
+type Builder func([]byte, TLJContext) interface{}
 
 type TypeStore struct {
 	Types      map[uint16]Builder
@@ -32,7 +32,7 @@ func NewTypeStore() TypeStore {
 		InsertType: &sync.Mutex{},
 	}
 
-	capsule_builder := func(data []byte) interface{} {
+	capsule_builder := func(data []byte, _ TLJContext) interface{} {
 		capsule := &Capsule{}
 		err := json.Unmarshal(data, &capsule)
 		if err != nil {
@@ -72,12 +72,12 @@ func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {
 	return val, present
 }
 
-func (store *TypeStore) BuildType(struct_code uint16, data []byte) interface{} {
+func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLJContext) interface{} {
 	function, present := store.Types[struct_code]
 	if !present {
 		return nil
 	}
-	return function(data)
+	return function(data, context)
 }
 
 func (store *TypeStore) Format(instance interface{}) ([]byte, error) {
@@ -122,7 +122,7 @@ func (store *TypeStore) FormatCapsule(instance interface{}, request_id uint16) (
 	return store.Format(capsule)
 }
 
-func (store *TypeStore) NextStruct(socket net.Conn) (interface{}, error) {
+func (store *TypeStore) NextStruct(socket net.Conn, context TLJContext) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
 	if err != nil {
@@ -144,7 +144,7 @@ func (store *TypeStore) NextStruct(socket net.Conn) (interface{}, error) {
 		return nil, err
 	}
 
-	recieved_struct := store.BuildType(type_int, struct_data)
+	recieved_struct := store.BuildType(type_int, struct_data, context)
 
 	return recieved_struct, nil
 }

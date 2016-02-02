@@ -214,7 +214,7 @@ var _ = Describe("Server", func() {
 			}
 			err = context.Respond(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(client)
+			iface, err := populated_type_store.NextStruct(client, TLJContext{})
 			Expect(err).To(BeNil())
 			if response, correct_type := iface.(*Capsule); correct_type {
 				Expect(response.RequestID).To(Equal(uint16(1)))

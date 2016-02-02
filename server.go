@@ -130,8 +130,12 @@ func (server *Server) Delete(socket net.Conn) {
 
 func (server *Server) readStructs(socket net.Conn) {
 	defer socket.Close()
+	context := TLJContext{
+		Server: server,
+		Socket: socket,
+	}
 	for {
-		obj, err := server.TypeStore.NextStruct(socket)
+		obj, err := server.TypeStore.NextStruct(socket, context)
 		if err != nil {
 			server.FailedSockets <- socket
 			server.Delete(socket)
@@ -156,7 +160,7 @@ func (server *Server) readStructs(socket net.Conn) {
 							Socket:    socket,
 							Responder: responder,
 						}
-						recieved_struct := server.TypeStore.BuildType(capsule.Type, []byte(capsule.Data))
+						recieved_struct := server.TypeStore.BuildType(capsule.Type, []byte(capsule.Data), context)
 						if recieved_struct != nil {
 							go function(recieved_struct, context)
 						}

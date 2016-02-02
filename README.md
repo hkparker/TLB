@@ -261,7 +261,7 @@ TypeStore
 ••••
 Ran 36 of 36 Specs in 1.047 seconds
 SUCCESS! -- 36 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
-coverage: 90.2% of statements
+coverage: 90.3% of statements
 ok  	github.com/hkparker/TLJ	1.090s
 ```
 

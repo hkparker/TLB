@@ -46,7 +46,7 @@ var _ = Describe("Client", func() {
 			client := NewClient(client_side, &populated_type_store)
 			err = client.Message(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(server_side)
+			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
 			if received_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(received_thingy.ID).To(Equal(thingy.ID))
 				Expect(received_thingy.Name).To(Equal(thingy.Name))
@@ -73,7 +73,7 @@ var _ = Describe("Client", func() {
 			client := NewClient(client_side, &populated_type_store)
 			_, err = client.Request(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(server_side)
+			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
 			if capsule, correct_type := iface.(*Capsule); correct_type {
 				Expect(capsule.Type).To(Equal(uint16(1)))
 				restored_thing := &Thingy{}

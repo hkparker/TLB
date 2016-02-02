@@ -34,14 +34,17 @@ func NewClient(socket net.Conn, type_store *TypeStore) Client {
 }
 
 func (client *Client) process() {
+	context := TLJContext{
+		Socket: client.Socket,
+	}
 	for {
-		iface, err := client.TypeStore.NextStruct(client.Socket)
+		iface, err := client.TypeStore.NextStruct(client.Socket, context)
 		if err != nil {
 			client.Dead <- err
 			break
 		}
 		if capsule, ok := iface.(*Capsule); ok {
-			recieved_struct := client.TypeStore.BuildType(capsule.Type, []byte(capsule.Data))
+			recieved_struct := client.TypeStore.BuildType(capsule.Type, []byte(capsule.Data), context)
 			if recieved_struct == nil {
 				continue
 			}
