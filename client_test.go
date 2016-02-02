@@ -31,7 +31,7 @@ var _ = Describe("Client", func() {
 
 	Describe("Message", func() {
 		It("can use message to write a struct to a socket", func() {
-			listener, err := net.Listen("tcp", "localhost:5008")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			sockets := make(chan net.Conn, 1)
@@ -39,7 +39,7 @@ var _ = Describe("Client", func() {
 				conn, _ := listener.Accept()
 				sockets <- conn
 			}()
-			client_side, err := net.Dial("tcp", "localhost:5008")
+			client_side, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_side.Close()
 			server_side := <-sockets
@@ -58,7 +58,7 @@ var _ = Describe("Client", func() {
 
 	Describe("Request", func() {
 		It("can use request to write a capsule to a socket", func() {
-			listener, err := net.Listen("tcp", "localhost:5009")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			sockets := make(chan net.Conn, 1)
@@ -66,7 +66,7 @@ var _ = Describe("Client", func() {
 				conn, _ := listener.Accept()
 				sockets <- conn
 			}()
-			client_side, err := net.Dial("tcp", "localhost:5009")
+			client_side, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_side.Close()
 			server_side := <-sockets
@@ -90,7 +90,7 @@ var _ = Describe("Client", func() {
 	Describe("StreamWriter", func() {
 		Describe("Write", func() {
 			It("outputs the correct format", func() {
-				listener, err := net.Listen("tcp", "localhost:5014")
+				listener, err := net.Listen("tcp", "localhost:0")
 				Expect(err).To(BeNil())
 				defer listener.Close()
 				sockets := make(chan net.Conn, 1)
@@ -99,7 +99,7 @@ var _ = Describe("Client", func() {
 					Expect(err).To(BeNil())
 					sockets <- conn
 				}()
-				conn, err := net.Dial("tcp", "localhost:5014")
+				conn, err := net.Dial("tcp", listener.Addr().String())
 				Expect(err).To(BeNil())
 				client := <-sockets
 				stream_writer, err := NewStreamWriter(
@@ -133,7 +133,7 @@ var _ = Describe("Client", func() {
 	Describe("Request", func() {
 		Describe("OnResponse", func() {
 			It("can run on response callbacks", func() {
-				listener, err := net.Listen("tcp", "localhost:5010")
+				listener, err := net.Listen("tcp", "localhost:0")
 				Expect(err).To(BeNil())
 				defer listener.Close()
 				server := NewServer(listener, TagSocketAll, &populated_type_store)
@@ -145,7 +145,7 @@ var _ = Describe("Client", func() {
 					time.Sleep(1 * time.Second)
 					context.Respond(resp)
 				})
-				client_socket, err := net.Dial("tcp", "localhost:5010")
+				client_socket, err := net.Dial("tcp", listener.Addr().String())
 				Expect(err).To(BeNil())
 				defer client_socket.Close()
 				client := NewClient(client_socket, &populated_type_store)
@@ -173,13 +173,13 @@ var _ = Describe("Client", func() {
 		)
 
 		BeforeEach(func() {
-			listener, err := net.Listen("tcp", "localhost:5015")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			go func() {
 				listener.Accept()
 			}()
-			conn, err = net.Dial("tcp", "localhost:5015")
+			conn, err = net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 		})
 

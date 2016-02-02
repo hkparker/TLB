@@ -37,7 +37,7 @@ var _ = Describe("Server", func() {
 
 	Describe("Accept", func() {
 		It("can run the accept callbacks", func() {
-			listener, err := net.Listen("tcp", "localhost:5005")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			server := NewServer(listener, TagSocketAll, &populated_type_store)
@@ -60,13 +60,13 @@ var _ = Describe("Server", func() {
 			Expect(server.Events["all"]).ToNot(BeNil())
 			Expect(server.Events["all"][1]).ToNot(BeNil())
 			Expect(len(server.Events["all"][1])).To(Equal(2))
-			client_socket, err := net.Dial("tcp", "localhost:5005")
+			client_socket, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_socket.Close()
 			thingy_bytes, err := populated_type_store.Format(thingy)
 			Expect(err).To(BeNil())
 			client_socket.Write(thingy_bytes)
-			client_socket2, err := net.Dial("tcp", "localhost:5005")
+			client_socket2, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_socket2.Close()
 			first_incoming_thingy := <-first_chan
@@ -78,7 +78,7 @@ var _ = Describe("Server", func() {
 
 	Describe("AcceptRequest", func() {
 		It("can run accept request callbacks", func() {
-			listener, err := net.Listen("tcp", "localhost:5006")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			server := NewServer(listener, TagSocketAll, &populated_type_store)
@@ -101,13 +101,13 @@ var _ = Describe("Server", func() {
 			Expect(server.Requests["all"]).ToNot(BeNil())
 			Expect(server.Requests["all"][1]).ToNot(BeNil())
 			Expect(len(server.Requests["all"][1])).To(Equal(2))
-			client_socket, err := net.Dial("tcp", "localhost:5006")
+			client_socket, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_socket.Close()
 			capsule_bytes, err := populated_type_store.FormatCapsule(thingy, 1)
 			Expect(err).To(BeNil())
 			client_socket.Write(capsule_bytes)
-			client_socket2, err := net.Dial("tcp", "localhost:5006")
+			client_socket2, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client_socket2.Close()
 			first_incoming_thingy := <-first_chan
@@ -127,14 +127,14 @@ var _ = Describe("Server", func() {
 
 	Describe("UntagSocket", func() {
 		It("Untags a socket", func() {
-			listener, err := net.Listen("tcp", "localhost:5011")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			server := NewServer(listener, TagSocketAll, &type_store)
-			other_listener, err := net.Listen("tcp", "localhost:5012")
+			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
-			client_socket, err := net.Dial("tcp", "localhost:5012")
+			client_socket, err := net.Dial("tcp", other_listener.Addr().String())
 			defer client_socket.Close()
 			server.Insert(client_socket)
 			server_conns := server.Sockets["all"]
@@ -149,14 +149,14 @@ var _ = Describe("Server", func() {
 
 	Describe("Insert", func() {
 		It("can insert a client socket into the server", func() {
-			listener, err := net.Listen("tcp", "localhost:5003")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			server := NewServer(listener, TagSocketAll, &type_store)
-			other_listener, err := net.Listen("tcp", "localhost:5004")
+			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
-			client_socket, err := net.Dial("tcp", "localhost:5004")
+			client_socket, err := net.Dial("tcp", other_listener.Addr().String())
 			defer client_socket.Close()
 			server.Insert(client_socket)
 			server_conns := server.Sockets["all"]
@@ -167,14 +167,14 @@ var _ = Describe("Server", func() {
 
 	Describe("Delete", func() {
 		It("can delet a socket from all tags", func() {
-			listener, err := net.Listen("tcp", "localhost:5011")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			server := NewServer(listener, TagSocketAll, &type_store)
-			other_listener, err := net.Listen("tcp", "localhost:5012")
+			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
-			client_socket, err := net.Dial("tcp", "localhost:5012")
+			client_socket, err := net.Dial("tcp", other_listener.Addr().String())
 			defer client_socket.Close()
 			server.Insert(client_socket)
 			server_conns := server.Sockets["all"]
@@ -190,7 +190,7 @@ var _ = Describe("Server", func() {
 
 	Describe("TLJContext", func() {
 		It("can be used to send a response", func() {
-			listener, err := net.Listen("tcp", "localhost:5007")
+			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
 			sockets := make(chan net.Conn, 1)
@@ -198,7 +198,7 @@ var _ = Describe("Server", func() {
 				conn, _ := listener.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5007")
+			client, err := net.Dial("tcp", listener.Addr().String())
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <-sockets

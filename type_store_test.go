@@ -215,14 +215,14 @@ var _ = Describe("TypeStore", func() {
 	Describe("NextStruct", func() {
 		It("can read multiple structs", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5002")
+			server, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5002")
+			client, err := net.Dial("tcp", server.Addr().String())
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <-sockets
@@ -254,14 +254,14 @@ var _ = Describe("TypeStore", func() {
 
 		It("reports an error when the socket is broken", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5000")
+			server, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5000")
+			client, err := net.Dial("tcp", server.Addr().String())
 			Expect(err).To(BeNil())
 			client.Close()
 			_, err = type_store.NextStruct(client, TLJContext{})
@@ -270,14 +270,14 @@ var _ = Describe("TypeStore", func() {
 
 		It("returns nil when the struct is missing from the type store", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5001")
+			server, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5001")
+			client, err := net.Dial("tcp", server.Addr().String())
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <-sockets
@@ -290,14 +290,14 @@ var _ = Describe("TypeStore", func() {
 
 		It("returns an error when too few bytes are written", func() {
 			sockets := make(chan net.Conn, 1)
-			server, err := net.Listen("tcp", "localhost:5002")
+			server, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer server.Close()
 			go func() {
 				conn, _ := server.Accept()
 				sockets <- conn
 			}()
-			client, err := net.Dial("tcp", "localhost:5002")
+			client, err := net.Dial("tcp", server.Addr().String())
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <-sockets
