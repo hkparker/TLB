@@ -11,7 +11,7 @@ import (
 
 type Client struct {
 	Socket    net.Conn
-	TypeStore *TypeStore
+	TypeStore TypeStore
 	Requests  map[uint16]map[uint16][]func(interface{})
 	NextID    uint16
 	Writing   *sync.Mutex
@@ -19,7 +19,7 @@ type Client struct {
 	Dead      chan error
 }
 
-func NewClient(socket net.Conn, type_store *TypeStore) Client {
+func NewClient(socket net.Conn, type_store TypeStore) Client {
 	client := Client{
 		Socket:    socket,
 		TypeStore: type_store,

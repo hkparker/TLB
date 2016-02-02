@@ -40,7 +40,7 @@ var _ = Describe("Server", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
-			server := NewServer(listener, TagSocketAll, &populated_type_store)
+			server := NewServer(listener, TagSocketAll, populated_type_store)
 			first_chan := make(chan string)
 			second_chan := make(chan string)
 			server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
@@ -81,7 +81,7 @@ var _ = Describe("Server", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
-			server := NewServer(listener, TagSocketAll, &populated_type_store)
+			server := NewServer(listener, TagSocketAll, populated_type_store)
 			first_chan := make(chan string)
 			second_chan := make(chan string)
 			server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
@@ -130,7 +130,7 @@ var _ = Describe("Server", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
-			server := NewServer(listener, TagSocketAll, &type_store)
+			server := NewServer(listener, TagSocketAll, type_store)
 			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
@@ -152,7 +152,7 @@ var _ = Describe("Server", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
-			server := NewServer(listener, TagSocketAll, &type_store)
+			server := NewServer(listener, TagSocketAll, type_store)
 			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
@@ -170,7 +170,7 @@ var _ = Describe("Server", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer listener.Close()
-			server := NewServer(listener, TagSocketAll, &type_store)
+			server := NewServer(listener, TagSocketAll, type_store)
 			other_listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
 			defer other_listener.Close()
@@ -202,7 +202,7 @@ var _ = Describe("Server", func() {
 			Expect(err).To(BeNil())
 			defer client.Close()
 			server_side := <-sockets
-			server := NewServer(listener, TagSocketAll, &populated_type_store)
+			server := NewServer(listener, TagSocketAll, populated_type_store)
 			responder := Responder{
 				RequestID: 1,
 				WriteLock: sync.Mutex{},

@@ -8,7 +8,7 @@ import (
 
 type Server struct {
 	Listener        net.Listener
-	TypeStore       *TypeStore
+	TypeStore       TypeStore
 	Tag             func(net.Conn, *Server)
 	Tags            map[net.Conn][]string
 	Sockets         map[string][]net.Conn
@@ -21,7 +21,7 @@ type Server struct {
 	InsertEvents    *sync.Mutex
 }
 
-func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store *TypeStore) Server {
+func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store TypeStore) Server {
 	server := Server{
 		Listener:        listener,
 		TypeStore:       type_store,
