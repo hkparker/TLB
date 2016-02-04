@@ -1,7 +1,7 @@
 TLJ
 ===
 
-A simple Type Length Value protocol implemented with JSON to hand structs between Go applications over a variety of networks.
+A simple Type Length Value protocol implemented with JSON to hand structs between Go applications in an event driven way.
 
 Motivation
 ----------
@@ -11,18 +11,22 @@ TLJ is used to write networked application in Go by expressing the applications 
 Concepts
 --------
 
-TLJ contains servers which act on the unix.Listener interfaces, and clients that act on the net.Conn interfaces.  Both servers and clients must be bulit with the same instance of a TypeStore to be able to communicate, which holds all the structs that may be passed over the network.  The server also has a tagging function, which tags accepted sockets so the appropriate callbacks are ran.
+`Server`s wrap `net.Listener` and accept new connections.  When sockets are accepted the server can tag them based on any property of the connection.  The server can have events which are functions ran when a certain type of struct comes in on a socket with a certain tag.  Multiple events with the same criteria will be ran asynchronous.  The server can also use specificy request handlers for a certain type and have the ability to respond in a session.  All requesting and responding can be asynchronous.
 
-The server can accept structs from sockets with a specific tag using the `server.Accept()` function.  If the server needs to send a response, `server.AcceptRequest()` can be used, which provides functionallity to respond down the socket the struct was recieved on.
+`Client`s wrap `net.Conn` and can send structs.  `Client`s can also send structs as requests, and setup for various structs the server could send in response.
 
-Clients can use `client.Message()` to send a struct to a server without recieving a response.  If a response, or responses, are desired, clients can use `req := client.Request()`, which returns a request struct that can be used to define callbacks if the server responds with `req.OnResponse()`.
+`StreamWriter`s are like clients, but are created with the ability to only send one type of struct.  This minimizes overhead when formatting the struct.
+
+Both servers and clients must be bulit with the same instance of a TypeStore to be able to communicate, which holds all the structs that may be passed over the network.
+
+Peer to peer applications will only use clients to message structs, never requesting a response, as every client socket will also be part of a TLJ server.  In a client-server application, requests might make more sense.
 
 Usage
 -----
 
-To use tlj, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.
+To use tlj, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.  These structs are just basic examples, anything that can be marshalled to JSON is ok.
 
-```
+```go
 type InformationalEvent struct {
 	Parameter1	string
 	Parameter2	int
@@ -47,7 +51,7 @@ information_response_ptr := reflect.TypeOf(&InformationResponse{})
 
 Then, define funcs for each struct that will create the struct from a JSON byte array.  Add these functions to a TypeStore.
 
-```
+```go
 func NewInformationalEvent(data []byte) interface{} {
 	event := &InformationalEvent{}
 	err := json.Unmarshal(data, &event)
@@ -77,7 +81,7 @@ type_store.AddType(information_response_inst, informational_event_ptr, NewInform
 
 A tagging function is used by the server to tag sockets based on their properties.
 
-```
+```go
 func TagSocket(socket *net.Conn, server *Server) {
 	server.TagSocket(socket, "all")
 	// with TLS sockets, a client certificate could be used to tag sockets
@@ -87,9 +91,9 @@ func TagSocket(socket *net.Conn, server *Server) {
 
 Next create a server and a client that contain the same TypeStore.
 
-```
+```go
 listener := // Anything that implements net.UnixListener
-server := NewServer(listener, TagSocket, &type_store)
+server := NewServer(listener, TagSocket, type_store)
 
 socket := // Anything that implement net.Conn
 client := NewClient(socket, type_store)
@@ -97,7 +101,7 @@ client := NewClient(socket, type_store)
 
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
 
-```
+```go
 server.Accept("all", informational_event, func(iface interface{}, _ TLJContext) {
 	if informational_event, ok :=  iface.(*InformationalEvent); ok {			// type assertion as builders return an interface{}
 		fmt.Println("a socket tagged \"all\" sent an InformationalEvent struct")
@@ -124,14 +128,14 @@ server.AcceptRequest("all", information_request, func(iface interface{}, context
 
 It is also possible to insert sockets into an existing server and have them tagged.
 
-```
+```go
 socket := // any net.Conn
 server.Insert(socket)
 ```
 
 From the client side you can send structs as messages, or make requests and hook up goroutines on responses.
 
-```
+```go
 event := InformationalEvent {
 	Parameter1:	"test",
 	Parameter2:	0,
@@ -160,16 +164,12 @@ req.OnResponse(information_response, func(iface) {
 
 If you only ever want to send one type of struct, create a `StreamWriter` to avoid calling `reflect` every time you send a struct.
 
-```
+```go
 writer := NewStreamWriter(client, type_store, informational_event_inst)
 for {
 	writer.Write(<-InformationalEventsChan)
 }
 ```
-
-There can be many calls to server.Accept, server.AcceptRequest, and client.OnResponse with the same conditions but different functions and each will define a goroutine that will be concurrently executed when the condition is met.
-
-For peer-to-peer applications, both sides of a connection should be included in a TLJ server, and only `server.Accept()`, `client.Message()`, and `StreamWriter`s can be used.  For more traditional client-server applications client.Request and server.AcceptRequest might make more sense.
 
 Tests
 -----
