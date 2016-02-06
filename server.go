@@ -145,8 +145,8 @@ func (server *Server) readStructs(socket net.Conn) {
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(&Capsule{}) {
-			for _, tag := range tags {
-				if capsule, ok := obj.(*Capsule); ok {
+			if capsule, ok := obj.(*Capsule); ok {
+				for _, tag := range tags {
 					if server.Requests[tag][capsule.Type] == nil {
 						continue
 					}

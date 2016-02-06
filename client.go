@@ -103,13 +103,15 @@ func (client *Client) Request(instance interface{}) (*Request, error) {
 }
 
 type StreamWriter struct {
-	Socket net.Conn
-	TypeID uint16
+	Socket  net.Conn
+	TypeID  uint16
+	Writing *sync.Mutex
 }
 
 func NewStreamWriter(conn net.Conn, type_store TypeStore, struct_type reflect.Type) (StreamWriter, error) {
 	writer := StreamWriter{
-		Socket: conn,
+		Socket:  conn,
+		Writing: &sync.Mutex{},
 	}
 	if conn == nil {
 		return writer, errors.New("must provide conn")
@@ -136,7 +138,9 @@ func (writer *StreamWriter) Write(obj interface{}) error {
 	binary.LittleEndian.PutUint32(length_bytes, uint32(length))
 
 	bytes = append(type_bytes, append(length_bytes, bytes...)...)
+	writer.Writing.Lock()
 	writer.Socket.Write(bytes)
+	writer.Writing.Unlock()
 	return nil
 }
 
