@@ -6,19 +6,17 @@ A simple Type Length Value protocol implemented with JSON to hand structs betwee
 Concepts
 --------
 
-TLJ is used to write networked application in Go by expressing the applications behavior in terms of what to do with structs recieved on various sockets.
+TLJ is used to write networked application in Go by expressing the application's behavior in terms of what to do with structs recieved on various sockets.
 
-Here's a rough idea how how TLJ came about:
+Here's a rough idea of how TLJ came about:
 
 * maybe "*sockets that have a remote certificate I trust are 'trusted' sockets*"
 * or "*sockets that send an `Authentication{}` struct with a valid password are 'trusted' sockets*"
-* and "*when 'trusted' sockets send a `Message{}`, save it in the data base*"
-* but also "*when 'trusted' sockets send a `Message{}`, print it*"
-* how could this be expressed easily and sent efficiently?
+* and "*when 'trusted' sockets send a `Message{}`, save it in the database*"
+* and also "*when 'trusted' sockets send a `Message{}`, print it*"
+* how could this be expressed easily?
 
-Most generally, when *tag* receives *type*, do *func*.  If there are many funcs with the same criteria, run them all in parallel as goroutines.
-
-This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonymity networks such as I2P.
+Most generally, when *tag* receives *type*, do *func*.  If there are many funcs with the same criteria, run them all in parallel as goroutines.  This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonymity networks such as I2P.
 
 Usage
 -----
