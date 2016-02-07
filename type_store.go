@@ -9,14 +9,30 @@ import (
 	"sync"
 )
 
+//
+// A capsule is used to maintain a session between a client
+// and a server when using sever.AcceptRequest, client.Request,
+// or request.OnResponse.
+//
 type Capsule struct {
 	RequestID uint16
 	Type      uint16
 	Data      string
 }
 
+//
+// Builders are functions that take the raw payload in the TLV
+// protocol and parse the JSON and run any other validations
+// that may be nessicary based on the context before returning
+// the struct.
+//
 type Builder func([]byte, TLJContext) interface{}
 
+//
+// A TypeStore stores the information needed to marshal,
+// unmsrahsl, and recognize all types passed between all
+// other instances of TLJ that are communicated with.
+//
 type TypeStore struct {
 	Types      map[uint16]Builder
 	TypeCodes  map[reflect.Type]uint16
@@ -24,6 +40,9 @@ type TypeStore struct {
 	InsertType *sync.Mutex
 }
 
+//
+// Create a new TypeStore with type 0 being a Capsule.
+//
 func NewTypeStore() TypeStore {
 	type_store := TypeStore{
 		Types:      make(map[uint16]Builder),
@@ -47,6 +66,12 @@ func NewTypeStore() TypeStore {
 	return type_store
 }
 
+//
+// Insert a new type into the TypeStore by providing a reflect.Type
+// of the struct and a pointer to the struct, as well as the Builder
+// that will be used to construct the type.  Types must be JSON
+// serializable.
+//
 func (store *TypeStore) AddType(inst_type reflect.Type, ptr_type reflect.Type, builder Builder) error {
 	if inst_type == nil {
 		return errors.New("instance type cannot be nil")
@@ -67,11 +92,22 @@ func (store *TypeStore) AddType(inst_type reflect.Type, ptr_type reflect.Type, b
 	return nil
 }
 
+//
+// Given the reflect.Type of a type in the TypeStore, return
+// the uint16 that is used to identify this type over the
+// network, and a boolean to indicate if the type was present
+// in the TypeStore.
+//
 func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {
 	val, present := store.TypeCodes[struct_type]
 	return val, present
 }
 
+//
+// Call the Builder function for a given type on some data if
+// the type exists in the type store, return nil if the type
+// does not exist.
+//
 func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLJContext) interface{} {
 	function, present := store.Types[struct_code]
 	if !present {
@@ -80,6 +116,11 @@ func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLJCo
 	return function(data, context)
 }
 
+//
+// Take any JSON serializable struct that is in the TypeStore
+// and return the byte sequence to send on the network to deliver
+// the struct to the other instance of TLJ, as well as any errors.
+//
 func (store *TypeStore) Format(instance interface{}) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil {
@@ -102,6 +143,10 @@ func (store *TypeStore) Format(instance interface{}) ([]byte, error) {
 	return bytes, err
 }
 
+//
+// Take a struct and format it inside of a Capsule so it can
+// be sent statefully to another TLJ instance.
+//
 func (store *TypeStore) FormatCapsule(instance interface{}, request_id uint16) ([]byte, error) {
 	bytes, err := json.Marshal(instance)
 	if err != nil {
@@ -122,6 +167,10 @@ func (store *TypeStore) FormatCapsule(instance interface{}, request_id uint16) (
 	return store.Format(capsule)
 }
 
+//
+// Read a struct from a net.Conn interface using the types contained
+// in a TypeStore.
+//
 func (store *TypeStore) NextStruct(socket net.Conn, context TLJContext) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)

@@ -1,82 +1,81 @@
 TLJ
 ===
 
-A simple Type Length Value protocol implemented with JSON to hand structs between Go applications in an event driven way.
-
-Motivation
-----------
-
-TLJ is used to write networked application in Go by expressing the applications behavior in terms of what to do with structs recieved on various sockets.  This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonymity networks such as I2P.
+A simple Type Length Value protocol implemented with JSON to hand structs between Go applications in an event driven and parallel way.
 
 Concepts
 --------
 
-`Server`s wrap `net.Listener` and accept new connections.  When sockets are accepted the server can tag them based on any property of the connection.  The server can have events which are functions ran when a certain type of struct comes in on a socket with a certain tag.  Multiple events with the same criteria will be ran asynchronous.  The server can also use specificy request handlers for a certain type and have the ability to respond in a session.  All requesting and responding can be asynchronous.
+TLJ is used to write networked application in Go by expressing the applications behavior in terms of what to do with structs recieved on various sockets.
 
-`Client`s wrap `net.Conn` and can send structs.  `Client`s can also send structs as requests, and setup for various structs the server could send in response.
+Here's a rough idea how how TLJ came about:
 
-`StreamWriter`s are like clients, but are created with the ability to only send one type of struct.  This minimizes overhead when formatting the struct.
+* maybe "*sockets that have a remote certificate I trust are 'trusted' sockets*"
+* or "*sockets that send an `Authentication{}` struct with a valid password are 'trusted' sockets*"
+* and "*when 'trusted' sockets send a `Message{}`, save it in the data base*"
+* but also "*when 'trusted' sockets send a `Message{}`, print it*"
+* how could this be expressed easily and sent efficiently?
 
-Both servers and clients must be bulit with the same instance of a TypeStore to be able to communicate, which holds all the structs that may be passed over the network.
+Most generally, when *tag* receives *type*, do *func*.  If there are many funcs with the same criteria, run them all in parallel as goroutines.
 
-Peer to peer applications will only use clients to message structs, never requesting a response, as every client socket will also be part of a TLJ server.  In a client-server application, requests might make more sense.
+This library is meant to be used on a variety of networks, from traditional TLS sockets on the internet to anonymity networks such as I2P.
 
 Usage
 -----
 
-To use tlj, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.  These structs are just basic examples, anything that can be marshalled to JSON is ok.
+To use TLJ, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.  These structs are just basic examples, anything that can be marshalled to JSON is ok.
 
 ```go
-type InformationalEvent struct {
+type ExampleEvent struct {
 	Parameter1	string
 	Parameter2	int
 }
-informational_event_inst := reflect.TypeOf(InformationalEvent{})
-informational_event_ptr := reflect.TypeOf(&InformationalEvent{})
+example_event_inst := reflect.TypeOf(ExampleEvent{})
+example_event_ptr := reflect.TypeOf(&ExampleEvent{})
 
-Type InformationRequest {
+Type ExampleRequest {
 	Parameter1	string
 }
-information_request_inst := reflect.TypeOf(InformationRequest{})
-information_request_ptr := reflect.TypeOf(&InformationRequest{})
+example_request_inst := reflect.TypeOf(ExampleRequest{})
+example_request_ptr := reflect.TypeOf(&ExampleRequest{})
 
-type InformationResponse {
+type ExampleResponse {
 	Parameter1	string
 	Parameter2	string
 	Parameter3	string
 }
-information_response_inst := reflect.TypeOf(InformationResponse{})
-information_response_ptr := reflect.TypeOf(&InformationResponse{})
+example_response_inst := reflect.TypeOf(ExampleResponse{})
+example_response_ptr := reflect.TypeOf(&ExampleResponse{})
 ```
 
-Then, define funcs for each struct that will create the struct from a JSON byte array.  Add these functions to a TypeStore.
+Then, define Builder functions for each struct that will create and validate the struct from a JSON byte array.  The TLJContext can be used to access the socket that sent this data.  Add these functions to a TypeStore.
 
 ```go
-func NewInformationalEvent(data []byte) interface{} {
-	event := &InformationalEvent{}
+func NewExampleEvent(data []byte, context TLJContext) interface{} {
+	event := &ExampleEvent{}
 	err := json.Unmarshal(data, &event)
 	if err != nil { return nil }
 	return event
 }
 
-func NewInformationRequest(data []byte) interface{} {
-	request := &InformationRequest{}
+func NewExampleRequest(data []byte, context TLJContext) interface{} {
+	request := &ExampleRequest{}
 	err := json.Unmarshal(data, &request)
 	if err != nil { return nil }
 	return request
 }
 
-func NewInformationResponse(data []byte) interface{} {
-	response := &InformationResponse{}
+func NewExampleResponse(data []byte, context TLJContext) interface{} {
+	response := &ExampleResponse{}
 	err := json.Unmarshal(data, &response)
 	if err != nil { return nil }
 	return response
 }
 
 type_store := NewTypeStore()
-type_store.AddType(informational_event_inst, informational_event_ptr, NewInformationalEvent)
-type_store.AddType(information_request_inst, informational_event_ptr, NewInformationRequest)
-type_store.AddType(information_response_inst, informational_event_ptr, NewInformationResponse)
+type_store.AddType(example_event_inst, example_event_ptr, NewExampleEvent)
+type_store.AddType(example_request_inst, example_event_ptr, NewExampleRequest)
+type_store.AddType(example_response_inst, example_event_ptr, NewExampleResponse)
 ```
 
 A tagging function is used by the server to tag sockets based on their properties.
@@ -102,18 +101,18 @@ client := NewClient(socket, type_store)
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
 
 ```go
-server.Accept("all", informational_event, func(iface interface{}, _ TLJContext) {
-	if informational_event, ok :=  iface.(*InformationalEvent); ok {			// type assertion as builders return an interface{}
-		fmt.Println("a socket tagged \"all\" sent an InformationalEvent struct")
-		fmt.Println(informational_event.Parameter1)
-		fmt.Println(informational_event.Parameter2)
+server.Accept("all", example_event, func(iface interface{}, context TLJContext) {
+	if example_event, ok :=  iface.(*ExampleEvent); ok {
+		fmt.Println("a socket tagged \"all\" sent an ExampleEvent struct")
+		fmt.Println(example_event.Parameter1)
+		fmt.Println(example_event.Parameter2)
 	}
 })
 
-server.AcceptRequest("all", information_request, func(iface interface{}, context TLJContext) {
-	if information_request, ok :=  iface.(*InformationRequest); ok {
-		fmt.Println("a socket tagged \"all\" sent an InformationRequest request")
-		resp := InformationResponse {
+server.AcceptRequest("all", example_request, func(iface interface{}, context TLJContext) {
+	if example_request, ok :=  iface.(*ExampleRequest); ok {
+		fmt.Println("a socket tagged \"all\" sent an ExampleRequest request")
+		resp := ExampleResponse {
 			Parameter1:	"hello",
 			Parameter2:	"world",
 			Parameter3:	"response",
@@ -126,7 +125,7 @@ server.AcceptRequest("all", information_request, func(iface interface{}, context
 })
 ```
 
-It is also possible to insert sockets into an existing server and have them tagged.
+It is also possible to insert sockets into an existing server and have them tagged.  This lets peer-to-peer applications dial sockets on startup as well as accept connections once started.
 
 ```go
 socket := // any net.Conn
@@ -136,7 +135,7 @@ server.Insert(socket)
 From the client side you can send structs as messages, or make requests and hook up goroutines on responses.
 
 ```go
-event := InformationalEvent {
+event := ExampleEvent {
 	Parameter1:	"test",
 	Parameter2:	0,
 }
@@ -145,19 +144,19 @@ if err != nil {
 	fmt.Println("message did not send")
 }
 
-request := InformationRequest {
+request := ExampleRequest {
 	Parameter1:	"test",
 }
 req, err := client.Request(request)
 if err != nil {
 	fmt.Println("request did not send")
 }
-req.OnResponse(information_response, func(iface) {
-	if information_response, ok :=  iface.(*InformationResponse); ok {
-		fmt.Println("the request got a response of type InformationResponse")
-		fmt.Println(information_response.Parameter1)
-		fmt.Println(information_response.Parameter2)
-		fmt.Println(information_response.Parameter3)
+req.OnResponse(example_response, func(iface) {
+	if example_response, ok :=  iface.(*ExampleResponse); ok {
+		fmt.Println("the request got a response of type ExampleResponse")
+		fmt.Println(example_response.Parameter1)
+		fmt.Println(example_response.Parameter2)
+		fmt.Println(example_response.Parameter3)
 	}
 })
 ```
@@ -165,9 +164,9 @@ req.OnResponse(information_response, func(iface) {
 If you only ever want to send one type of struct, create a `StreamWriter` to avoid calling `reflect` every time you send a struct.
 
 ```go
-writer := NewStreamWriter(client, type_store, informational_event_inst)
+writer := NewStreamWriter(client, type_store, example_event_inst)
 for {
-	writer.Write(<-InformationalEventsChan)
+	writer.Write(<-ExampleEventsChan)
 }
 ```
 
@@ -259,13 +258,13 @@ TypeStore
       Average Time: 0.000s ± 0.000s
 ------------------------------
 ••••
-Ran 36 of 36 Specs in 1.047 seconds
+Ran 36 of 36 Specs in 1.030 seconds
 SUCCESS! -- 36 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
-coverage: 90.3% of statements
+coverage: 91.9% of statements
 ok  	github.com/hkparker/TLJ	1.090s
 ```
 
 License
 -------
 
-This project is licensed under the MIT license, see LICENSE for more information.
+This project is licensed under the MIT license, see LICENSE for more example.
