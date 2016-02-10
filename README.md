@@ -86,14 +86,14 @@ func TagSocket(socket *net.Conn, server *Server) {
 }
 ```
 
-Next create a server and a client that contain the same TypeStore.
+Next create a Server and a Client that contain the same TypeStore.
 
 ```go
 listener := // Anything that implements net.UnixListener
 server := NewServer(listener, TagSocket, type_store)
 
 socket := // Anything that implement net.Conn
-client := NewClient(socket, type_store)
+client := NewClient(socket, type_store, false)
 ```
 
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
@@ -130,7 +130,25 @@ socket := // any net.Conn
 server.Insert(socket)
 ```
 
-From the client side you can send structs as messages, or make requests and hook up goroutines on responses.
+Notice how `false` was passed to `NewClient()`.  This put the Client in Client-Server mode, meaning the Client created a goroutine to read data coming back from the server.  This enables stateful requests, but means this socket could not simultaniously be used in a Server.  To put a Client in p2p mode, the third argument to NewClient should be `true`.
+
+```go
+// Client-Server mode:
+client := NewClient(socket, type_store, false)
+// Able to:
+client.Message()
+req := client.Request()
+req.OnResponse()
+
+// P2P mode:
+client := NewClient(socket, type_store, true)
+// Able to:
+server := // a TLJ Server
+server.Insert(client.Socket)
+client.Message()
+```
+
+This is what is might look like:
 
 ```go
 event := ExampleEvent {
@@ -159,7 +177,7 @@ req.OnResponse(example_response, func(iface) {
 })
 ```
 
-If you only ever want to send one type of struct, create a `StreamWriter` to avoid calling `reflect` every time you send a struct.
+If you only ever want to send one type of struct, create a `StreamWriter` to avoid calling `reflect` every time you send a struct.  This is like a Client in p2p mode that can only send one type of struct.
 
 ```go
 writer := NewStreamWriter(client, type_store, example_event_inst)

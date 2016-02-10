@@ -43,7 +43,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 			defer client_side.Close()
 			server_side := <-sockets
-			client := NewClient(client_side, populated_type_store)
+			client := NewClient(client_side, populated_type_store, true)
 			err = client.Message(thingy)
 			Expect(err).To(BeNil())
 			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
@@ -70,7 +70,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 			defer client_side.Close()
 			server_side := <-sockets
-			client := NewClient(client_side, populated_type_store)
+			client := NewClient(client_side, populated_type_store, true)
 			_, err = client.Request(thingy)
 			Expect(err).To(BeNil())
 			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
@@ -148,7 +148,7 @@ var _ = Describe("Client", func() {
 				client_socket, err := net.Dial("tcp", listener.Addr().String())
 				Expect(err).To(BeNil())
 				defer client_socket.Close()
-				client := NewClient(client_socket, populated_type_store)
+				client := NewClient(client_socket, populated_type_store, false)
 				request, err := client.Request(thingy)
 				Expect(err).To(BeNil())
 				run_chan := make(chan string)
@@ -184,7 +184,7 @@ var _ = Describe("Client", func() {
 		})
 
 		Measure("speed of client.Message()", func(b Benchmarker) {
-			client := NewClient(conn, populated_type_store)
+			client := NewClient(conn, populated_type_store, false)
 			b.Time("runtime", func() {
 				client.Message(thingy)
 			})

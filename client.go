@@ -28,7 +28,7 @@ type Client struct {
 // TypeStore containing all types that will be seen on
 // the network.
 //
-func NewClient(socket net.Conn, type_store TypeStore) Client {
+func NewClient(socket net.Conn, type_store TypeStore, p2p bool) Client {
 	client := Client{
 		Socket:    socket,
 		TypeStore: type_store,
@@ -38,7 +38,9 @@ func NewClient(socket net.Conn, type_store TypeStore) Client {
 		Inserting: &sync.Mutex{},
 		Dead:      make(chan error, 1),
 	}
-	go client.process()
+	if !p2p {
+		go client.process()
+	}
 	return client
 }
 
