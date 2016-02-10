@@ -148,7 +148,7 @@ server.Insert(client.Socket)
 client.Message()
 ```
 
-This is what is might look like:
+This is what it might look like:
 
 ```go
 event := ExampleEvent {
