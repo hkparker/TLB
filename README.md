@@ -115,7 +115,7 @@ server.AcceptRequest("all", example_request, func(iface interface{}, context TLJ
 			Parameter2:	"world",
 			Parameter3:	"response",
 		}
-		context.Responder.Respond(resp)
+		context.Respond(resp)
 		if err != nil {
 			fmt.Println("response did not send")
 		}
@@ -283,4 +283,4 @@ ok  	github.com/hkparker/TLJ	1.090s
 License
 -------
 
-This project is licensed under the MIT license, see LICENSE for more example.
+This project is licensed under the MIT license, see LICENSE for more information.
