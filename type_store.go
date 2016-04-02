@@ -187,6 +187,10 @@ func (store *TypeStore) NextStruct(socket net.Conn, context TLJContext) (interfa
 	type_int := binary.LittleEndian.Uint16(type_bytes)
 	size_int := binary.LittleEndian.Uint32(size_bytes)
 
+	if _, present := store.Types[type_int]; !present {
+		return nil, errors.New("type code on received struct not in type store")
+	}
+
 	struct_data := make([]byte, size_int)
 	_, err = socket.Read(struct_data)
 	if err != nil {

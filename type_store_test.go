@@ -268,7 +268,7 @@ var _ = Describe("TypeStore", func() {
 			Expect(err).ToNot(BeNil())
 		})
 
-		It("returns nil when the struct is missing from the type store", func() {
+		It("returns nil and an error when the struct is missing from the type store", func() {
 			sockets := make(chan net.Conn, 1)
 			server, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
@@ -285,7 +285,8 @@ var _ = Describe("TypeStore", func() {
 			server_side.Write(thingy_bytes)
 			iface, err := type_store.NextStruct(client, TLJContext{})
 			Expect(iface).To(BeNil())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("type code on received struct not in type store"))
 		})
 
 		It("returns an error when too few bytes are written", func() {
