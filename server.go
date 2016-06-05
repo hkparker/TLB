@@ -85,8 +85,10 @@ func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type,
 // Assign a string tag to a socket in this Server.
 //
 func (server *Server) TagSocket(socket net.Conn, tag string) {
+	server.TagManipulation.Lock()
 	server.Tags[socket] = append(server.Tags[socket], tag)
 	server.Sockets[tag] = append(server.Sockets[tag], socket)
+	server.TagManipulation.Unlock()
 }
 
 //
@@ -120,6 +122,7 @@ func ExcludeConn(list []net.Conn, omit net.Conn) []net.Conn {
 // Disassociate a string tag from a socket on this server.
 //
 func (server *Server) UntagSocket(socket net.Conn, tag string) {
+	server.TagManipulation.Lock()
 	server.Tags[socket] = ExcludeString(server.Tags[socket], tag)
 	server.Sockets[tag] = ExcludeConn(server.Sockets[tag], socket)
 	if len(server.Sockets[tag]) == 0 {
@@ -128,6 +131,7 @@ func (server *Server) UntagSocket(socket net.Conn, tag string) {
 	if len(server.Tags[socket]) == 0 {
 		delete(server.Tags, socket)
 	}
+	server.TagManipulation.Unlock()
 }
 
 //
@@ -148,9 +152,7 @@ func (server *Server) process() {
 // Tag the socket then read an structs from this socket until the socket is closed.
 //
 func (server *Server) Insert(socket net.Conn) {
-	server.TagManipulation.Lock()
 	server.Tag(socket, server)
-	server.TagManipulation.Unlock()
 	go server.readStructs(socket)
 }
 
@@ -160,7 +162,14 @@ func (server *Server) Insert(socket net.Conn) {
 func (server *Server) Delete(socket net.Conn) {
 	server.TagManipulation.Lock()
 	for _, tag := range server.Tags[socket] {
-		server.UntagSocket(socket, tag)
+		server.Tags[socket] = ExcludeString(server.Tags[socket], tag)
+		server.Sockets[tag] = ExcludeConn(server.Sockets[tag], socket)
+		if len(server.Sockets[tag]) == 0 {
+			delete(server.Sockets, tag)
+		}
+		if len(server.Tags[socket]) == 0 {
+			delete(server.Tags, socket)
+		}
 	}
 	server.TagManipulation.Unlock()
 }
@@ -181,7 +190,9 @@ func (server *Server) readStructs(socket net.Conn) {
 			server.Delete(socket)
 			return
 		}
+		server.TagManipulation.Lock()
 		tags := server.Tags[socket]
+		server.TagManipulation.Unlock()
 		if obj == nil {
 			continue
 		} else if reflect.TypeOf(obj) == reflect.TypeOf(&Capsule{}) {

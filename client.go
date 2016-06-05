@@ -14,13 +14,13 @@ import (
 // TLJ formatted structs through the interface.
 //
 type Client struct {
-	Socket    net.Conn
-	TypeStore TypeStore
-	Requests  map[uint16]map[uint16][]func(interface{})
-	NextID    uint16
-	Writing   *sync.Mutex
-	Inserting *sync.Mutex
-	Dead      chan error
+	Socket               net.Conn
+	TypeStore            TypeStore
+	Requests             map[uint16]map[uint16][]func(interface{})
+	NextID               uint16
+	Writing              *sync.Mutex
+	RequestsManipulation *sync.Mutex
+	Dead                 chan error
 }
 
 //
@@ -30,13 +30,13 @@ type Client struct {
 //
 func NewClient(socket net.Conn, type_store TypeStore, p2p bool) Client {
 	client := Client{
-		Socket:    socket,
-		TypeStore: type_store,
-		Requests:  make(map[uint16]map[uint16][]func(interface{})),
-		NextID:    1,
-		Writing:   &sync.Mutex{},
-		Inserting: &sync.Mutex{},
-		Dead:      make(chan error, 1),
+		Socket:               socket,
+		TypeStore:            type_store,
+		Requests:             make(map[uint16]map[uint16][]func(interface{})),
+		NextID:               1,
+		Writing:              &sync.Mutex{},
+		RequestsManipulation: &sync.Mutex{},
+		Dead:                 make(chan error, 1),
 	}
 	if !p2p {
 		go client.process()
@@ -64,12 +64,14 @@ func (client *Client) process() {
 			if recieved_struct == nil {
 				continue
 			}
+			client.RequestsManipulation.Lock()
 			if client.Requests[capsule.RequestID][capsule.Type] == nil {
 				continue
 			}
 			for _, function := range client.Requests[capsule.RequestID][capsule.Type] {
 				go function(recieved_struct)
 			}
+			client.RequestsManipulation.Unlock()
 		}
 	}
 }
@@ -123,9 +125,9 @@ func (client *Client) Request(instance interface{}) (Request, error) {
 		Type:      request.Type,
 		Data:      request.Data,
 	}
-	client.Inserting.Lock()
+	request.Client.RequestsManipulation.Lock()
 	client.Requests[request.RequestID] = make(map[uint16][]func(interface{}))
-	client.Inserting.Unlock()
+	request.Client.RequestsManipulation.Unlock()
 	err = client.Message(capsule)
 	return request, err
 }
@@ -199,8 +201,8 @@ type Request struct {
 //
 func (request *Request) OnResponse(struct_type reflect.Type, function func(interface{})) {
 	if type_id, present := request.Client.TypeStore.LookupCode(struct_type); present {
-		request.Client.Inserting.Lock()
+		request.Client.RequestsManipulation.Lock()
 		request.Client.Requests[request.RequestID][type_id] = append(request.Client.Requests[request.RequestID][type_id], function)
-		request.Client.Inserting.Unlock()
+		request.Client.RequestsManipulation.Unlock()
 	}
 }

@@ -190,94 +190,17 @@ Tests
 -----
 
 ```
+$ go test -race -cover
 Running Suite: TLJ Suite
 ========================
-Random Seed: 1454222030
-Will run 36 of 36 specs
+Random Seed: 1465096248
+Will run 31 of 31 specs
 
-•••••••••••
-------------------------------
-• [MEASUREMENT]
-Client
-/home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:205
-  Performance Comparison
-  /home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:204
-    speed of client.Message()
-    /home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:191
-
-    Ran 100 samples:
-    runtime:
-      Fastest Time: 0.000s
-      Slowest Time: 0.000s
-      Average Time: 0.000s ± 0.000s
-------------------------------
-• [MEASUREMENT]
-Client
-/home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:205
-  Performance Comparison
-  /home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:204
-    speed of stream_writer.Write()
-    /home/hayden/.go/src/github.com/hkparker/TLJ/client_test.go:203
-
-    Ran 100 samples:
-    runtime:
-      Fastest Time: 0.000s
-      Slowest Time: 0.000s
-      Average Time: 0.000s ± 0.000s
-------------------------------
-•••••
-------------------------------
-• [MEASUREMENT]
-TypeStore
-/home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:309
-  AddType
-  /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:103
-    it should add types quickly
-    /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:102
-
-    Ran 100 samples:
-    runtime:
-      Fastest Time: 0.000s
-      Slowest Time: 0.000s
-      Average Time: 0.000s ± 0.000s
-------------------------------
-••••••••
-------------------------------
-• [MEASUREMENT]
-TypeStore
-/home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:309
-  Format
-  /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:173
-    it should format structs quickly
-    /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:172
-
-    Ran 100 samples:
-    runtime:
-      Fastest Time: 0.000s
-      Slowest Time: 0.000s
-      Average Time: 0.000s ± 0.000s
-------------------------------
-•••
-------------------------------
-• [MEASUREMENT]
-TypeStore
-/home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:309
-  FormatCapsule
-  /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:213
-    it should format capsules quickly
-    /home/hayden/.go/src/github.com/hkparker/TLJ/type_store_test.go:212
-
-    Ran 100 samples:
-    runtime:
-      Fastest Time: 0.000s
-      Slowest Time: 0.000s
-      Average Time: 0.000s ± 0.000s
-------------------------------
-••••
-Ran 36 of 36 Specs in 1.030 seconds
-SUCCESS! -- 36 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
-coverage: 92.0% of statements
-ok  	github.com/hkparker/TLJ	1.090s
+•••••••••••••••••••••••••••••••
+Ran 31 of 31 Specs in 1.012 seconds
+SUCCESS! -- 31 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
+coverage: 91.9% of statements
+ok  	github.com/hkparker/TLJ	2.040s
 ```
 
 License

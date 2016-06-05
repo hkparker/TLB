@@ -166,40 +166,4 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
-
-	Describe("Performance Comparison", func() {
-		var (
-			conn net.Conn
-		)
-
-		BeforeEach(func() {
-			listener, err := net.Listen("tcp", "localhost:0")
-			Expect(err).To(BeNil())
-			defer listener.Close()
-			go func() {
-				listener.Accept()
-			}()
-			conn, err = net.Dial("tcp", listener.Addr().String())
-			Expect(err).To(BeNil())
-		})
-
-		Measure("speed of client.Message()", func(b Benchmarker) {
-			client := NewClient(conn, populated_type_store, false)
-			b.Time("runtime", func() {
-				client.Message(thingy)
-			})
-		}, 100)
-
-		Measure("speed of stream_writer.Write()", func(b Benchmarker) {
-			stream_writer, err := NewStreamWriter(
-				conn,
-				populated_type_store,
-				reflect.TypeOf(Thingy{}),
-			)
-			Expect(err).To(BeNil())
-			b.Time("runtime", func() {
-				stream_writer.Write(thingy)
-			})
-		}, 100)
-	})
 })

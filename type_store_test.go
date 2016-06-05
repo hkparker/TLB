@@ -92,14 +92,6 @@ var _ = Describe("TypeStore", func() {
 			err := type_store.AddType(inst_type, ptr_type, nil)
 			Expect(err).ToNot(BeNil())
 		})
-
-		Measure("it should add types quickly", func(b Benchmarker) {
-			b.Time("runtime", func() {
-				inst_type := reflect.TypeOf(Thingy{})
-				ptr_type := reflect.TypeOf(&Thingy{})
-				type_store.AddType(inst_type, ptr_type, BuildThingy)
-			})
-		}, 100)
 	})
 
 	Describe("LookupCode", func() {
@@ -164,12 +156,6 @@ var _ = Describe("TypeStore", func() {
 			_, err := type_store.Format(nil)
 			Expect(err).ToNot(BeNil())
 		})
-
-		Measure("it should format structs quickly", func(b Benchmarker) {
-			b.Time("runtime", func() {
-				populated_type_store.Format(thingy)
-			})
-		}, 100)
 	})
 
 	Describe("FormatCapsule", func() {
@@ -204,12 +190,6 @@ var _ = Describe("TypeStore", func() {
 			_, err := type_store.FormatCapsule(nil, 1)
 			Expect(err).ToNot(BeNil())
 		})
-
-		Measure("it should format capsules quickly", func(b Benchmarker) {
-			b.Time("runtime", func() {
-				populated_type_store.Format(thingy)
-			})
-		}, 100)
 	})
 
 	Describe("NextStruct", func() {
