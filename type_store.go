@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"reflect"
 	"sync"
@@ -191,10 +192,20 @@ func (store *TypeStore) NextStruct(socket net.Conn, context TLJContext) (interfa
 		return nil, errors.New("type code on received struct not in type store")
 	}
 
-	struct_data := make([]byte, size_int)
-	_, err = socket.Read(struct_data)
-	if err != nil {
-		return nil, err
+	struct_data := make([]byte, 0)
+	total_read := 0
+	for total_read < int(size_int) {
+		buf := make([]byte, int(size_int)-total_read)
+		n, err = socket.Read(buf)
+		total_read += n
+		if err == io.EOF {
+			if total_read != int(size_int) {
+				return nil, errors.New("EOF before all data read")
+			}
+		} else if err != nil {
+			return nil, err
+		}
+		struct_data = append(struct_data, buf[:n]...)
 	}
 
 	recieved_struct := store.BuildType(type_int, struct_data, context)
