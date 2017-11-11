@@ -1,4 +1,4 @@
-package tlj
+package tlb
 
 import (
 	"net"
@@ -8,7 +8,7 @@ import (
 
 //
 // A Server wraps a net.Listener and accepts incoming connections,
-// tagging them and running any relevant callbacks on valid TLJ
+// tagging them and running any relevant callbacks on valid TLB
 // structs received on them.
 //
 type Server struct {
@@ -17,8 +17,8 @@ type Server struct {
 	Tag             func(net.Conn, *Server)
 	Tags            map[net.Conn][]string
 	Sockets         map[string][]net.Conn
-	Events          map[string]map[uint16][]func(interface{}, TLJContext)
-	Requests        map[string]map[uint16][]func(interface{}, TLJContext)
+	Events          map[string]map[uint16][]func(interface{}, TLBContext)
+	Requests        map[string]map[uint16][]func(interface{}, TLBContext)
 	FailedServer    chan error
 	FailedSockets   chan net.Conn
 	TagManipulation *sync.Mutex
@@ -37,8 +37,8 @@ func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store Ty
 		Tag:             tag,
 		Tags:            make(map[net.Conn][]string),
 		Sockets:         make(map[string][]net.Conn),
-		Events:          make(map[string]map[uint16][]func(interface{}, TLJContext)),
-		Requests:        make(map[string]map[uint16][]func(interface{}, TLJContext)),
+		Events:          make(map[string]map[uint16][]func(interface{}, TLBContext)),
+		Requests:        make(map[string]map[uint16][]func(interface{}, TLBContext)),
 		FailedServer:    make(chan error, 1),
 		FailedSockets:   make(chan net.Conn, 200),
 		TagManipulation: &sync.Mutex{},
@@ -54,9 +54,9 @@ func NewServer(listener net.Listener, tag func(net.Conn, *Server), type_store Ty
 // a specific type of struct.  The server will have no ability to respond
 // statefully to this event.
 //
-func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{}, TLJContext)) {
+func (server *Server) Accept(socket_tag string, struct_type reflect.Type, function func(interface{}, TLBContext)) {
 	if server.Events[socket_tag] == nil {
-		server.Events[socket_tag] = make(map[uint16][]func(interface{}, TLJContext))
+		server.Events[socket_tag] = make(map[uint16][]func(interface{}, TLBContext))
 	}
 	if type_code, present := server.TypeStore.LookupCode(struct_type); present {
 		server.InsertEvents.Lock()
@@ -70,9 +70,9 @@ func (server *Server) Accept(socket_tag string, struct_type reflect.Type, functi
 // a capsule containing a specific type of struct.  The callback accepts a
 // responder which can be used to respond to the client statefully.
 //
-func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, TLJContext)) {
+func (server *Server) AcceptRequest(socket_tag string, struct_type reflect.Type, function func(interface{}, TLBContext)) {
 	if server.Requests[socket_tag] == nil {
-		server.Requests[socket_tag] = make(map[uint16][]func(interface{}, TLJContext))
+		server.Requests[socket_tag] = make(map[uint16][]func(interface{}, TLBContext))
 	}
 	if type_code, present := server.TypeStore.LookupCode(struct_type); present {
 		server.InsertRequests.Lock()
@@ -179,7 +179,7 @@ func (server *Server) Delete(socket net.Conn) {
 //
 func (server *Server) readStructs(socket net.Conn) {
 	defer socket.Close()
-	context := TLJContext{
+	context := TLBContext{
 		Server: server,
 		Socket: socket,
 	}
@@ -206,7 +206,7 @@ func (server *Server) readStructs(socket net.Conn) {
 //
 // Run all functions stored during server.Accept calls
 //
-func (server *Server) runEventCallbacks(obj interface{}, tags []string, context TLJContext) {
+func (server *Server) runEventCallbacks(obj interface{}, tags []string, context TLBContext) {
 	for _, tag := range tags {
 		recieved_type, present := server.TypeStore.LookupCode(reflect.TypeOf(obj))
 		if !present {
@@ -224,7 +224,7 @@ func (server *Server) runEventCallbacks(obj interface{}, tags []string, context 
 //
 // Run all functions stored during server.AcceptRequest calls
 //
-func (server *Server) runRequestCallbacks(obj interface{}, tags []string, context TLJContext) {
+func (server *Server) runRequestCallbacks(obj interface{}, tags []string, context TLBContext) {
 	if capsule, ok := obj.(*Capsule); ok {
 		for _, tag := range tags {
 			if server.Requests[tag][capsule.Type] == nil {
@@ -246,10 +246,10 @@ func (server *Server) runRequestCallbacks(obj interface{}, tags []string, contex
 }
 
 //
-// Context about TLJ events so Server callbacks can respond statefully
+// Context about TLB events so Server callbacks can respond statefully
 // and Builders can conditionally validate data and verify signatures.
 //
-type TLJContext struct {
+type TLBContext struct {
 	Server    *Server
 	Socket    net.Conn
 	Responder Responder
@@ -267,7 +267,7 @@ type Responder struct {
 // Respond is used to send a struct down the socket the sent a request
 // with client.Request
 //
-func (context *TLJContext) Respond(object interface{}) error {
+func (context *TLBContext) Respond(object interface{}) error {
 	response_bytes, err := context.Server.TypeStore.FormatCapsule(object, context.Responder.RequestID)
 	if err != nil {
 		return err

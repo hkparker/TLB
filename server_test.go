@@ -1,11 +1,11 @@
-package tlj_test
+package tlb_test
 
 import (
-	"encoding/json"
 	"fmt"
-	. "github.com/hkparker/TLJ"
+	. "github.com/hkparker/TLB"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/mgo.v2/bson"
 	"net"
 	"reflect"
 	"sync"
@@ -43,14 +43,14 @@ var _ = Describe("Server", func() {
 			server := NewServer(listener, TagSocketAll, populated_type_store)
 			first_chan := make(chan string)
 			second_chan := make(chan string)
-			server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
+			server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLBContext) {
 				if received_thingy, correct_type := iface.(*Thingy); correct_type {
 					first_chan <- fmt.Sprintf("accept-%s-%d.0", received_thingy.Name, received_thingy.ID)
 				} else {
 					Expect(correct_type).To(Equal(true))
 				}
 			})
-			server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
+			server.Accept("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLBContext) {
 				if received_thingy, correct_type := iface.(*Thingy); correct_type {
 					second_chan <- fmt.Sprintf("accept-%s-%d.1", received_thingy.Name, received_thingy.ID)
 				} else {
@@ -84,14 +84,14 @@ var _ = Describe("Server", func() {
 			server := NewServer(listener, TagSocketAll, populated_type_store)
 			first_chan := make(chan string)
 			second_chan := make(chan string)
-			server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
+			server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLBContext) {
 				if received_thingy, correct_type := iface.(*Thingy); correct_type {
 					first_chan <- fmt.Sprintf("acceptrequest-%s-%d.0", received_thingy.Name, received_thingy.ID)
 				} else {
 					Expect(correct_type).To(Equal(true))
 				}
 			})
-			server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLJContext) {
+			server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, _ TLBContext) {
 				if received_thingy, correct_type := iface.(*Thingy); correct_type {
 					second_chan <- fmt.Sprintf("acceptrequest-%s-%d.1", received_thingy.Name, received_thingy.ID)
 				} else {
@@ -188,7 +188,7 @@ var _ = Describe("Server", func() {
 		})
 	})
 
-	Describe("TLJContext", func() {
+	Describe("TLBContext", func() {
 		It("can be used to send a response", func() {
 			listener, err := net.Listen("tcp", "localhost:0")
 			Expect(err).To(BeNil())
@@ -207,20 +207,20 @@ var _ = Describe("Server", func() {
 				RequestID: 1,
 				WriteLock: sync.Mutex{},
 			}
-			context := TLJContext{
+			context := TLBContext{
 				Server:    &server,
 				Socket:    server_side,
 				Responder: responder,
 			}
 			err = context.Respond(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(client, TLJContext{})
+			iface, err := populated_type_store.NextStruct(client, TLBContext{})
 			Expect(err).To(BeNil())
 			if response, correct_type := iface.(*Capsule); correct_type {
 				Expect(response.RequestID).To(Equal(uint16(1)))
 				Expect(response.Type).To(Equal(uint16(1)))
 				restored_thing := &Thingy{}
-				err = json.Unmarshal([]byte(response.Data), &restored_thing)
+				err = bson.Unmarshal([]byte(response.Data), &restored_thing)
 				Expect(err).To(BeNil())
 				Expect(restored_thing.ID).To(Equal(thingy.ID))
 				Expect(restored_thing.Name).To(Equal(thingy.Name))

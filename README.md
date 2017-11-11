@@ -1,14 +1,21 @@
-TLJ
+TLB
 ===
 
-A simple Type Length Value protocol implemented with JSON to hand structs between Go applications in an event driven and parallel way.
+A simple Type Length Value protocol implemented with BSON to hand structs between Go applications in an event driven and parallel way.
+
+It follows from [TLJ](https://github.com/hkparker/TLJ), but BSON is much faster.
+
+```
+BenchmarkBSON-4           100000             17542 ns/op
+BenchmarkJSON-4             1000           2210297 ns/op
+```
 
 Concepts
 --------
 
-TLJ is used to write networked application in Go by expressing the application's behavior in terms of what to do with structs recieved on various sockets.
+TLB is used to write networked application in Go by expressing the application's behavior in terms of what to do with structs recieved on various sockets.
 
-Here's a rough idea of how TLJ came about:
+Here's a rough idea of how TLB came about:
 
 * maybe "*sockets that have a remote certificate I trust are 'trusted' sockets*"
 * or "*sockets that send an `Authentication{}` struct with a valid password are 'trusted' sockets*"
@@ -21,7 +28,7 @@ Most generally, when *tag* receives *type*, do *func*.  If there are many funcs 
 Usage
 -----
 
-To use TLJ, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.  These structs are just basic examples, anything that can be marshalled to JSON is ok.
+To use TLB, start by defining some structs you want to pass around.  We want to hold on to references to their types for later.  These structs are just basic examples, anything that can be marshalled to BSON is ok.
 
 ```go
 type ExampleEvent struct {
@@ -46,26 +53,26 @@ example_response_inst := reflect.TypeOf(ExampleResponse{})
 example_response_ptr := reflect.TypeOf(&ExampleResponse{})
 ```
 
-Then, define Builder functions for each struct that will create and validate the struct from a JSON byte array.  The TLJContext can be used to access the socket that sent this data.  Add these functions to a TypeStore.
+Then, define Builder functions for each struct that will create and validate the struct from a BSON byte array.  The TLBContext can be used to access the socket that sent this data.  Add these functions to a TypeStore.
 
 ```go
-func NewExampleEvent(data []byte, context TLJContext) interface{} {
+func NewExampleEvent(data []byte, context TLBContext) interface{} {
 	event := &ExampleEvent{}
-	err := json.Unmarshal(data, &event)
+	err := bson.Unmarshal(data, &event)
 	if err != nil { return nil }
 	return event
 }
 
-func NewExampleRequest(data []byte, context TLJContext) interface{} {
+func NewExampleRequest(data []byte, context TLBContext) interface{} {
 	request := &ExampleRequest{}
-	err := json.Unmarshal(data, &request)
+	err := bson.Unmarshal(data, &request)
 	if err != nil { return nil }
 	return request
 }
 
-func NewExampleResponse(data []byte, context TLJContext) interface{} {
+func NewExampleResponse(data []byte, context TLBContext) interface{} {
 	response := &ExampleResponse{}
-	err := json.Unmarshal(data, &response)
+	err := bson.Unmarshal(data, &response)
 	if err != nil { return nil }
 	return response
 }
@@ -99,7 +106,7 @@ client := NewClient(socket, type_store, false)
 Hook up some goroutines on the server that run on structs or requests that came from sockets with certain tags.  A type assertion is used to avoid needing reflect to access fields.
 
 ```go
-server.Accept("all", example_event, func(iface interface{}, context TLJContext) {
+server.Accept("all", example_event, func(iface interface{}, context TLBContext) {
 	if example_event, ok :=  iface.(*ExampleEvent); ok {
 		fmt.Println("a socket tagged \"all\" sent an ExampleEvent struct")
 		fmt.Println(example_event.Parameter1)
@@ -107,7 +114,7 @@ server.Accept("all", example_event, func(iface interface{}, context TLJContext) 
 	}
 })
 
-server.AcceptRequest("all", example_request, func(iface interface{}, context TLJContext) {
+server.AcceptRequest("all", example_request, func(iface interface{}, context TLBContext) {
 	if example_request, ok :=  iface.(*ExampleRequest); ok {
 		fmt.Println("a socket tagged \"all\" sent an ExampleRequest request")
 		resp := ExampleResponse {
@@ -143,7 +150,7 @@ req.OnResponse()
 // P2P mode:
 client := NewClient(socket, type_store, true)
 // Able to:
-server := // a TLJ Server
+server := // a TLB Server
 server.Insert(client.Socket)
 client.Message()
 ```
@@ -191,7 +198,7 @@ Tests
 
 ```
 $ go test -race -cover
-Running Suite: TLJ Suite
+Running Suite: TLB Suite
 ========================
 Random Seed: 1465096248
 Will run 31 of 31 specs
@@ -199,8 +206,8 @@ Will run 31 of 31 specs
 •••••••••••••••••••••••••••••••
 Ran 31 of 31 Specs in 1.012 seconds
 SUCCESS! -- 31 Passed | 0 Failed | 0 Pending | 0 Skipped PASS
-coverage: 91.9% of statements
-ok  	github.com/hkparker/TLJ	2.040s
+coverage: 92.2% of statements
+ok  	github.com/hkparker/TLB	2.040s
 ```
 
 License

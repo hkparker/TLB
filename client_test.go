@@ -1,11 +1,11 @@
-package tlj_test
+package tlb_test
 
 import (
 	"encoding/binary"
-	"encoding/json"
-	. "github.com/hkparker/TLJ"
+	. "github.com/hkparker/TLB"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/mgo.v2/bson"
 	"net"
 	"reflect"
 	"time"
@@ -46,7 +46,8 @@ var _ = Describe("Client", func() {
 			client := NewClient(client_side, populated_type_store, true)
 			err = client.Message(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
+			iface, err := populated_type_store.NextStruct(server_side, TLBContext{})
+			Expect(err).To(BeNil())
 			if received_thingy, correct_type := iface.(*Thingy); correct_type {
 				Expect(received_thingy.ID).To(Equal(thingy.ID))
 				Expect(received_thingy.Name).To(Equal(thingy.Name))
@@ -73,11 +74,11 @@ var _ = Describe("Client", func() {
 			client := NewClient(client_side, populated_type_store, true)
 			_, err = client.Request(thingy)
 			Expect(err).To(BeNil())
-			iface, err := populated_type_store.NextStruct(server_side, TLJContext{})
+			iface, err := populated_type_store.NextStruct(server_side, TLBContext{})
 			if capsule, correct_type := iface.(*Capsule); correct_type {
 				Expect(capsule.Type).To(Equal(uint16(1)))
 				restored_thing := &Thingy{}
-				err = json.Unmarshal([]byte(capsule.Data), &restored_thing)
+				err = bson.Unmarshal([]byte(capsule.Data), &restored_thing)
 				Expect(err).To(BeNil())
 				Expect(restored_thing.ID).To(Equal(thingy.ID))
 				Expect(restored_thing.Name).To(Equal(thingy.Name))
@@ -122,7 +123,7 @@ var _ = Describe("Client", func() {
 				Expect(type_int).To(Equal(uint16(1)))
 				Expect(size_int).To(Equal(uint32(len(thingy_data))))
 				restored_thingy := Thingy{}
-				err = json.Unmarshal(thingy_data, &restored_thingy)
+				err = bson.Unmarshal(thingy_data, &restored_thingy)
 				Expect(err).To(BeNil())
 				Expect(restored_thingy.ID).To(Equal(1))
 				Expect(restored_thingy.Name).To(Equal("test"))
@@ -137,7 +138,7 @@ var _ = Describe("Client", func() {
 				Expect(err).To(BeNil())
 				defer listener.Close()
 				server := NewServer(listener, TagSocketAll, populated_type_store)
-				server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, context TLJContext) {
+				server.AcceptRequest("all", reflect.TypeOf(Thingy{}), func(iface interface{}, context TLBContext) {
 					resp := Thingy{
 						ID:   2,
 						Name: "response!",

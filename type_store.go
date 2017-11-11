@@ -1,9 +1,9 @@
-package tlj
+package tlb
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net"
 	"reflect"
@@ -23,16 +23,16 @@ type Capsule struct {
 
 //
 // Builders are functions that take the raw payload in the TLV
-// protocol and parse the JSON and run any other validations
+// protocol and parse the BSON and run any other validations
 // that may be nessicary based on the context before returning
 // the struct.
 //
-type Builder func([]byte, TLJContext) interface{}
+type Builder func([]byte, TLBContext) interface{}
 
 //
 // A TypeStore stores the information needed to marshal,
 // unmsrahsl, and recognize all types passed between all
-// other instances of TLJ that are communicated with.
+// other instances of TLB that are communicated with.
 //
 type TypeStore struct {
 	Types      map[uint16]Builder
@@ -52,9 +52,9 @@ func NewTypeStore() TypeStore {
 		InsertType: &sync.Mutex{},
 	}
 
-	capsule_builder := func(data []byte, _ TLJContext) interface{} {
+	capsule_builder := func(data []byte, _ TLBContext) interface{} {
 		capsule := &Capsule{}
-		err := json.Unmarshal(data, &capsule)
+		err := bson.Unmarshal(data, &capsule)
 		if err != nil {
 			return nil
 		}
@@ -70,7 +70,7 @@ func NewTypeStore() TypeStore {
 //
 // Insert a new type into the TypeStore by providing a reflect.Type
 // of the struct and a pointer to the struct, as well as the Builder
-// that will be used to construct the type.  Types must be JSON
+// that will be used to construct the type.  Types must be BSON
 // serializable.
 //
 func (store *TypeStore) AddType(inst_type reflect.Type, ptr_type reflect.Type, builder Builder) error {
@@ -109,7 +109,7 @@ func (store *TypeStore) LookupCode(struct_type reflect.Type) (uint16, bool) {
 // the type exists in the type store, return nil if the type
 // does not exist.
 //
-func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLJContext) interface{} {
+func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLBContext) interface{} {
 	function, present := store.Types[struct_code]
 	if !present {
 		return nil
@@ -118,12 +118,12 @@ func (store *TypeStore) BuildType(struct_code uint16, data []byte, context TLJCo
 }
 
 //
-// Take any JSON serializable struct that is in the TypeStore
+// Take any BSON serializable struct that is in the TypeStore
 // and return the byte sequence to send on the network to deliver
-// the struct to the other instance of TLJ, as well as any errors.
+// the struct to the other instance of TLB, as well as any errors.
 //
 func (store *TypeStore) Format(instance interface{}) ([]byte, error) {
-	bytes, err := json.Marshal(instance)
+	bytes, err := bson.Marshal(instance)
 	if err != nil {
 		return nil, err
 	}
@@ -146,10 +146,10 @@ func (store *TypeStore) Format(instance interface{}) ([]byte, error) {
 
 //
 // Take a struct and format it inside of a Capsule so it can
-// be sent statefully to another TLJ instance.
+// be sent statefully to another TLB instance.
 //
 func (store *TypeStore) FormatCapsule(instance interface{}, request_id uint16) ([]byte, error) {
-	bytes, err := json.Marshal(instance)
+	bytes, err := bson.Marshal(instance)
 	if err != nil {
 		return bytes, err
 	}
@@ -172,7 +172,7 @@ func (store *TypeStore) FormatCapsule(instance interface{}, request_id uint16) (
 // Read a struct from a net.Conn interface using the types contained
 // in a TypeStore.
 //
-func (store *TypeStore) NextStruct(socket net.Conn, context TLJContext) (interface{}, error) {
+func (store *TypeStore) NextStruct(socket net.Conn, context TLBContext) (interface{}, error) {
 	header := make([]byte, 6)
 	n, err := socket.Read(header)
 	if err != nil {

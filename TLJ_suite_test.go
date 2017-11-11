@@ -1,4 +1,4 @@
-package tlj_test
+package tlb_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTLJ(t *testing.T) {
+func TestTLB(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "TLJ Suite")
+	RunSpecs(t, "TLB Suite")
 }

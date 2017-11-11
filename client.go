@@ -1,9 +1,9 @@
-package tlj
+package tlb
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
+	"gopkg.in/mgo.v2/bson"
 	"net"
 	"reflect"
 	"sync"
@@ -11,7 +11,7 @@ import (
 
 //
 // A Client is used to wrap a net.Conn interface and send
-// TLJ formatted structs through the interface.
+// TLB formatted structs through the interface.
 //
 type Client struct {
 	Socket               net.Conn
@@ -50,7 +50,7 @@ func NewClient(socket net.Conn, type_store TypeStore, p2p bool) Client {
 // previously made requests.
 //
 func (client *Client) process() {
-	context := TLJContext{
+	context := TLBContext{
 		Socket: client.Socket,
 	}
 	for {
@@ -106,7 +106,7 @@ func (client *Client) Message(instance interface{}) error {
 // inside a capsule and write it down the client's net.Conn.
 //
 func (client *Client) Request(instance interface{}) (Request, error) {
-	instance_data, err := json.Marshal(instance)
+	instance_data, err := bson.Marshal(instance)
 	if err != nil {
 		return Request{}, err
 	}
@@ -165,7 +165,7 @@ func NewStreamWriter(conn net.Conn, type_store TypeStore, struct_type reflect.Ty
 // Write a struct using the StreamWriter.
 //
 func (writer *StreamWriter) Write(obj interface{}) error {
-	bytes, err := json.Marshal(obj)
+	bytes, err := bson.Marshal(obj)
 	if err != nil {
 		return err
 	}
